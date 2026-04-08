@@ -9,7 +9,7 @@ A lightweight monitoring tool for [Claude Code](https://docs.anthropic.com/en/do
 ## Architecture
 
 ```
-[Machine A: agent] ──POST──> [Server] <──GET── [Electron Tray App]
+[Machine A: agent] ──POST──> [Server] <──GET── [UI (Electron or macOS native)]
 [Machine B: agent] ──POST──>    │
 [Docker:    agent] ──POST──>    │
                                 └──SSH poll──> [Machine C: no agent]
@@ -21,7 +21,8 @@ All machines are assumed to be on the same [Tailscale](https://tailscale.com/) n
 |-----------|------|
 | **Server** | Central state aggregator. Receives agent pushes, optionally polls via SSH, serves REST API. |
 | **Agent** | Runs on each monitored machine. Detects session state from JSONL transcripts + PID liveness. Pushes to server. |
-| **UI** | Electron tray/menubar app. Displays sessions grouped by machine. Supports light/dark mode. |
+| **UI (Electron)** | Cross-platform Electron tray/menubar app. Displays sessions grouped by machine. Supports light/dark mode. |
+| **UI (macOS native)** | Native Swift/SwiftUI menu bar app for macOS. Lightweight alternative to the Electron UI. |
 
 ## Session Metadata
 
@@ -89,6 +90,27 @@ bash agent/install.sh
 The install script sets up a systemd service (Linux) or launchd agent (macOS) that starts automatically.
 
 ### 3. Launch the UI
+
+#### Option A: macOS Native (recommended for macOS)
+
+```bash
+cd macos-ui
+
+# Build and create .app bundle
+bash make-app.sh
+
+# Install to Applications
+cp -r ClaudeCodeMonitor.app /Applications/
+
+# Or just run directly
+open ClaudeCodeMonitor.app
+```
+
+Requires macOS 14 (Sonoma) or later and Xcode Command Line Tools.
+
+On first launch, click the tray icon → gear icon to configure server URL and API key.
+
+#### Option B: Electron (cross-platform)
 
 ```bash
 cd ui
@@ -179,7 +201,8 @@ The agent detects session status by:
 
 - **Server**: TypeScript, Fastify, SQLite (better-sqlite3)
 - **Agent**: TypeScript, Node.js
-- **UI**: Electron, vanilla HTML/CSS/JS
+- **UI (Electron)**: Electron, vanilla HTML/CSS/JS
+- **UI (macOS native)**: Swift, SwiftUI + AppKit
 - **Shared**: TypeScript types (npm workspace)
 
 ## License
