@@ -12,20 +12,18 @@ interface MonitorSession {
   hidden: boolean;
 }
 
-declare global {
-  interface Window {
-    electronAPI: {
-      onSessionsUpdate: (callback: (sessions: MonitorSession[]) => void) => void;
-      copyToClipboard: (text: string) => void;
-      hideSession: (sessionId: string) => Promise<boolean>;
-      restoreSession: (sessionId: string) => Promise<boolean>;
-      getConfig: () => Promise<{ serverUrl: string; apiKey: string }>;
-      saveConfig: (config: { serverUrl: string; apiKey: string }) => Promise<boolean>;
-      openSettings: () => void;
-      getSessions: () => Promise<MonitorSession[]>;
-    };
-  }
+interface ElectronAPI {
+  onSessionsUpdate: (callback: (sessions: MonitorSession[]) => void) => void;
+  copyToClipboard: (text: string) => void;
+  hideSession: (sessionId: string) => Promise<boolean>;
+  restoreSession: (sessionId: string) => Promise<boolean>;
+  getConfig: () => Promise<{ serverUrl: string; apiKey: string }>;
+  saveConfig: (config: { serverUrl: string; apiKey: string }) => Promise<boolean>;
+  openSettings: () => void;
+  getSessions: () => Promise<MonitorSession[]>;
 }
+
+const electronAPI = (window as any).electronAPI as ElectronAPI;
 
 const STATUS_EMOJI: Record<string, string> = {
   active: "\u26a1",
@@ -155,25 +153,25 @@ function renderSessions(sessions: MonitorSession[]): void {
 
 // Global functions for onclick handlers
 (window as any).copyId = (sessionId: string) => {
-  window.electronAPI.copyToClipboard(sessionId);
+  electronAPI.copyToClipboard(sessionId);
 };
 
 (window as any).hideSession = async (sessionId: string) => {
-  await window.electronAPI.hideSession(sessionId);
+  await electronAPI.hideSession(sessionId);
 };
 
 (window as any).openSettings = () => {
-  window.electronAPI.openSettings();
+  electronAPI.openSettings();
 };
 
 // Listen for updates from main process
-window.electronAPI.onSessionsUpdate((sessions) => {
+electronAPI.onSessionsUpdate((sessions) => {
   console.log("[renderer] received sessions-update:", sessions.length);
   renderSessions(sessions);
 });
 
 // Also pull sessions on load (in case we missed the push)
-window.electronAPI.getSessions().then((sessions) => {
+electronAPI.getSessions().then((sessions) => {
   console.log("[renderer] initial pull:", sessions.length);
   renderSessions(sessions);
 });
