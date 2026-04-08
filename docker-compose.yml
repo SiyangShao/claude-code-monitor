@@ -14,7 +14,8 @@ services:
       - CLAUDE_MONITOR_CONFIG=/config/server-config.json
       - CLAUDE_MONITOR_DB=/data/server.db
     depends_on:
-      - tailscale
+      tailscale:
+        condition: service_healthy
 
   tailscale:
     image: tailscale/tailscale:latest
@@ -31,7 +32,14 @@ services:
     environment:
       - TS_AUTHKEY=${TS_AUTHKEY:-}
       - TS_STATE_DIR=/var/lib/tailscale
-      - TS_USERSPACE=false
+      - TS_HOSTNAME=claude-monitor
+      - TS_EXTRA_ARGS=--accept-dns=false
+    healthcheck:
+      test: ["CMD", "tailscale", "--socket=/tmp/tailscaled.sock", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
