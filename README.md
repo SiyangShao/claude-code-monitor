@@ -166,7 +166,9 @@ All mutation endpoints (`POST`, `PATCH`, `DELETE`) require `Authorization: Beare
 The agent detects session status by:
 
 1. Scanning `~/.claude/projects/*/<session-uuid>.jsonl` for session files
-2. Checking PID liveness via `~/.claude/tasks/<sessionId>/.lock` (held open by the Claude process)
+2. Checking PID liveness:
+   - **Linux**: checks `~/.claude/tasks/<sessionId>/.lock` (held open by the Claude process)
+   - **macOS**: uses `lsof -a -c claude -d cwd` to match Claude process working directory
 3. Reading the JSONL tail to determine state:
    - **active**: File recently written + PID alive
    - **waiting**: Last assistant message has `tool_use` with no follow-up user response

@@ -166,7 +166,9 @@ npm run build && npx electron-builder --linux --config electron-builder.yml
 Agent 通过以下方式检测会话状态：
 
 1. 扫描 `~/.claude/projects/*/<session-uuid>.jsonl` 查找会话文件
-2. 通过 `~/.claude/tasks/<sessionId>/.lock` 文件检测 PID 存活（Claude 进程持有该文件句柄）
+2. 检测 PID 存活：
+   - **Linux**：通过 `~/.claude/tasks/<sessionId>/.lock` 文件检测（Claude 进程持有该文件句柄）
+   - **macOS**：使用 `lsof -a -c claude -d cwd` 匹配 Claude 进程工作目录
 3. 读取 JSONL 文件末尾判断状态：
    - **active**：文件近期有写入 + PID 存活
    - **waiting**：最后一条 assistant 消息包含 `tool_use` 但没有后续 user 响应

@@ -23,7 +23,7 @@
 ### Agent (`agent/`) — Node.js daemon
 - Runs on each monitored machine, detects session state, pushes to server
 - Detection: scan `~/.claude/projects/*/sessions/*.jsonl`, read JSONL tail
-- PID liveness: checks `~/.claude/tasks/<sessionId>/.lock` (held open by Claude process via `/proc/<pid>/fd/` or `lsof`)
+- PID liveness: Linux checks `~/.claude/tasks/<sessionId>/.lock` via `/proc/<pid>/fd/`; macOS uses `lsof -a -c claude -d cwd` to match process cwd
 - States: active (recent writes + PID alive), waiting (tool_use without follow-up user response), compacting (compact_boundary), idle
 - Pushes on state change + 30s heartbeat
 - Metadata: sessionId, status, cwd, title/slug, lastActivity, machine, environment
