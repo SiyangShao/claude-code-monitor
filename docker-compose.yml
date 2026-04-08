@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.server
-    ports:
-      - "19876:19876"
     volumes:
       - server-data:/data
       - ./config:/config:ro
@@ -21,6 +19,9 @@ services:
   tailscale:
     image: tailscale/tailscale:latest
     hostname: claude-monitor
+    ports:
+      # Expose on host network too (optional, for local access)
+      - "19876:19876"
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
@@ -28,12 +29,9 @@ services:
       - tailscale-state:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun
     environment:
-      # Set your auth key here or via .env file
       - TS_AUTHKEY=${TS_AUTHKEY:-}
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=false
-      # Expose server port on tailscale network
-      - TS_SERVE_CONFIG=/config/ts-serve.json
     restart: unless-stopped
 
 volumes:
