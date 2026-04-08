@@ -9,7 +9,7 @@
 ## 架构
 
 ```
-[机器 A: agent] ──POST──> [Server] <──GET── [Electron 托盘应用]
+[机器 A: agent] ──POST──> [Server] <──GET── [UI (Electron 或 macOS 原生)]
 [机器 B: agent] ──POST──>    │
 [Docker: agent] ──POST──>    │
                               └──SSH 轮询──> [机器 C: 无 agent]
@@ -21,7 +21,8 @@
 |------|------|
 | **Server** | 中央状态聚合器。接收 agent 推送，可选通过 SSH 轮询无 agent 的机器，提供 REST API。 |
 | **Agent** | 运行在每台被监控的机器上。通过 JSONL 日志 + PID 存活检测来判断会话状态，推送到 server。 |
-| **UI** | Electron 托盘/菜单栏应用。按机器分组显示会话，支持明亮/暗黑模式自动切换。 |
+| **UI (Electron)** | 跨平台 Electron 托盘/菜单栏应用。按机器分组显示会话，支持明亮/暗黑模式自动切换。 |
+| **UI (macOS 原生)** | 原生 Swift/SwiftUI 菜单栏应用。macOS 上更轻量的替代方案。 |
 
 ## 会话元数据
 
@@ -89,6 +90,27 @@ bash agent/install.sh
 安装脚本会自动配置 systemd 服务（Linux）或 launchd 代理（macOS），开机自启。
 
 ### 3. 启动 UI
+
+#### 方式 A：macOS 原生应用（macOS 推荐）
+
+```bash
+cd macos-ui
+
+# 编译并创建 .app 包
+bash make-app.sh
+
+# 安装到 Applications
+cp -r ClaudeCodeMonitor.app /Applications/
+
+# 或直接运行
+open ClaudeCodeMonitor.app
+```
+
+需要 macOS 14 (Sonoma) 或更高版本，以及 Xcode Command Line Tools。
+
+首次启动后，点击托盘图标 → 齿轮图标，配置 Server 地址和 API Key。
+
+#### 方式 B：Electron（跨平台）
 
 ```bash
 cd ui
@@ -179,7 +201,8 @@ Agent 通过以下方式检测会话状态：
 
 - **Server**: TypeScript, Fastify, SQLite (better-sqlite3)
 - **Agent**: TypeScript, Node.js
-- **UI**: Electron, 原生 HTML/CSS/JS
+- **UI (Electron)**: Electron, 原生 HTML/CSS/JS
+- **UI (macOS 原生)**: Swift, SwiftUI + AppKit
 - **共享类型**: TypeScript (npm workspace)
 
 ## 许可证
