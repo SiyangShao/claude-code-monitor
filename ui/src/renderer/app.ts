@@ -11,6 +11,7 @@ interface MonitorSession {
   pid: number | null;
   claudeVersion: string | null;
   hidden: boolean;
+  firstSeen: string;
 }
 
 interface ElectronAPI {
@@ -131,7 +132,8 @@ function renderSessions(sessions: MonitorSession[]): void {
     for (const s of machineSessions) {
       const displayName = s.customTitle || s.title || s.slug || shortPath(s.cwd) || s.sessionId.substring(0, 8);
       const projectPath = shortPath(s.cwd);
-      const timeAgo = formatTimeAgo(s.lastActivity);
+      const lastChange = formatTimeAgo(s.lastActivity);
+      const created = formatTimeAgo(s.firstSeen);
       const emoji = STATUS_EMOJI[s.status] || "";
 
       html += `
@@ -141,7 +143,7 @@ function renderSessions(sessions: MonitorSession[]): void {
             <div class="session-name" ondblclick="event.stopPropagation(); renameSession('${escapeHtml(s.sessionId)}', this)">${escapeHtml(displayName)}</div>
             <div class="session-meta">${escapeHtml(projectPath)}</div>
           </div>
-          <div class="session-time">${timeAgo}</div>
+          <div class="session-time" title="last change / created">${lastChange} / ${created}</div>
           <div class="session-actions">
             <button class="btn copy" onclick="event.stopPropagation(); copyId('${escapeHtml(s.sessionId)}')" title="Copy UUID">ID</button>
             <button class="btn" onclick="event.stopPropagation(); hideSession('${escapeHtml(s.sessionId)}')" title="Hide">\u2715</button>
