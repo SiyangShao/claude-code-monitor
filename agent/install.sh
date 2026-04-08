@@ -38,14 +38,14 @@ TMPL
     exit 0
 fi
 
-# Build agent
+# Build agent (only install agent + shared workspace dependencies, skip server/ui)
 echo "Building agent..."
 cd "$AGENT_DIR"
-npm install
-cd shared && npx tsc
-cd ../agent && npx tsc
+npm install --workspace=shared --workspace=agent
+npx --workspace=shared tsc
+npx --workspace=agent tsc
 
-AGENT_BIN="$(pwd)/dist/index.js"
+AGENT_BIN="${AGENT_DIR}/agent/dist/index.js"
 
 if [[ "$OS" == "linux" ]]; then
     echo "Installing systemd user service..."
