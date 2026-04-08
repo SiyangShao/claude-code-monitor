@@ -217,6 +217,30 @@ async function fetchSessions(): Promise<MonitorSession[]> {
   }
 }
 
+// ===== Polling =====
+
+async function updateSessions(): Promise<void> {
+  const sessions = await fetchSessions();
+  const worstStatus = getWorstStatus(sessions);
+
+  currentStatus = worstStatus;
+  if (tray && !tray.isDestroyed()) {
+    tray.setImage(createTrayIcon(worstStatus));
+    const counts = {
+      active: sessions.filter((s) => s.status === "active").length,
+      waiting: sessions.filter((s) => s.status === "waiting").length,
+      idle: sessions.filter((s) => s.status === "idle").length,
+    };
+    tray.setToolTip(
+      `Claude Monitor: ${counts.active} active, ${counts.waiting} waiting, ${counts.idle} idle`
+    );
+  }
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("sessions-update", sessions);
+  }
+}
+
 // ===== App Lifecycle =====
 
 app.whenReady().then(() => {
@@ -247,6 +271,8 @@ app.whenReady().then(() => {
       positionWindowNearTray(mainWindow, bounds);
       mainWindow.show();
       mainWindow.focus();
+      // Send latest data immediately when window becomes visible
+      updateSessions();
     }
   });
 
@@ -303,33 +329,11 @@ app.whenReady().then(() => {
     return true;
   });
 
-  ipcMain.handle("open-settings", () => {
+  ipcMain.on("open-settings", () => {
     createSettingsWindow();
   });
 
   // ===== Polling =====
-
-  const updateSessions = async () => {
-    const sessions = await fetchSessions();
-    const worstStatus = getWorstStatus(sessions);
-
-    currentStatus = worstStatus;
-    if (tray && !tray.isDestroyed()) {
-      tray.setImage(createTrayIcon(worstStatus));
-      const counts = {
-        active: sessions.filter((s) => s.status === "active").length,
-        waiting: sessions.filter((s) => s.status === "waiting").length,
-        idle: sessions.filter((s) => s.status === "idle").length,
-      };
-      tray.setToolTip(
-        `Claude Monitor: ${counts.active} active, ${counts.waiting} waiting, ${counts.idle} idle`
-      );
-    }
-
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("sessions-update", sessions);
-    }
-  };
 
   updateSessions();
   pollTimer = setInterval(updateSessions, POLL_INTERVAL);

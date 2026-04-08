@@ -23,6 +23,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("save-config", config);
   },
   openSettings: () => {
-    return ipcRenderer.invoke("open-settings");
+    ipcRenderer.send("open-settings");
   },
 });
