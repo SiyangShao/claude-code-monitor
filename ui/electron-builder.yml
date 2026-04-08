@@ -1,0 +1,18 @@
+appId: com.claude-monitor.ui
+productName: Claude Code Monitor
+directories:
+  output: release
+files:
+  - dist/**/*
+  - "!node_modules/**/*"
+  - node_modules/@claude-monitor/shared/dist/**/*
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+linux:
+  category: Development
+  target:
+    - AppImage
+    - deb

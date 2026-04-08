@@ -1,0 +1,165 @@
+# Claude Code Monitor
+
+一个轻量级的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 会话监控工具，支持跨多台机器监控。一眼看清哪些会话正在活跃、等待中、压缩中或空闲——覆盖本地、SSH 远程和 Docker 环境。
+
+**纯监控** —— 不包含控制功能。设计目标：简单。
+
+## 架构
+
+```
+[机器 A: agent] ──POST──> [Server] <──GET── [Electron 托盘应用]
+[机器 B: agent] ──POST──>    │
+[Docker: agent] ──POST──>    │
+                              └──SSH 轮询──> [机器 C: 无 agent]
+```
+
+所有机器需在同一个 [Tailscale](https://tailscale.com/) 网络中。
+
+| 组件 | 职责 |
+|------|------|
+| **Server** | 中央状态聚合器。接收 agent 推送，可选通过 SSH 轮询无 agent 的机器，提供 REST API。 |
+| **Agent** | 运行在每台被监控的机器上。通过 JSONL 日志 + PID 存活检测来判断会话状态，推送到 server。 |
+| **UI** | Electron 托盘/菜单栏应用。按机器分组显示会话，支持明亮/暗黑模式自动切换。 |
+
+## 会话元数据
+
+每个会话显示：
+
+- 状态：`active`（活跃）/ `waiting`（等待中）/ `compacting`（压缩中）/ `idle`（空闲）
+- 工作目录
+- 会话 slug/标题
+- 会话 UUID（一键复制）
+- 机器名称和环境类型
+- 最后活动时间
+
+空闲超过 2 天的会话自动隐藏（可配置）。隐藏的会话在状态变为非空闲时自动恢复显示。
+
+## 快速开始
+
+### 1. 启动 Server
+
+```bash
+# 复制并编辑配置
+cp config/server-config.example.json config/server-config.json
+# 编辑 config/server-config.json
+
+# 方式 A：Docker Compose（推荐）
+cp .env.example .env
+# 编辑 .env，填入 Tailscale auth key
+docker compose up -d
+
+# 方式 B：直接运行
+npm install
+npm run -w @claude-monitor/shared build
+npm run -w @claude-monitor/server build
+npm run -w @claude-monitor/server start
+```
+
+### 2. 安装 Agent（在每台被监控的机器上）
+
+```bash
+# 创建 agent 配置
+mkdir -p ~/.claude-monitor
+cat > ~/.claude-monitor/agent-config.json << 'EOF'
+{
+  "serverUrl": "http://claude-monitor.your-tailnet.ts.net:19876",
+  "apiKey": "your-secret-key",
+  "machineName": "my-machine",
+  "environment": "local",
+  "pollIntervalSeconds": 5,
+  "heartbeatIntervalSeconds": 30
+}
+EOF
+
+# 安装为系统服务
+bash agent/install.sh
+```
+
+安装脚本会自动配置 systemd 服务（Linux）或 launchd 代理（macOS），开机自启。
+
+### 3. 启动 UI
+
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+打包为独立应用：
+
+```bash
+npm run package         # 当前平台
+npm run package:mac     # macOS .dmg
+npm run package:linux   # Linux .AppImage
+```
+
+## 配置
+
+### Server 配置 (`config/server-config.json`)
+
+```json
+{
+  "port": 19876,
+  "apiKey": "your-secret-key",
+  "autoHideIdleDays": 2,
+  "sshTargets": [
+    {
+      "name": "gpu-server",
+      "host": "gpu-server.tailnet.ts.net",
+      "user": "your-user",
+      "pollIntervalSeconds": 30
+    },
+    {
+      "name": "gpu-docker",
+      "host": "gpu-server.tailnet.ts.net",
+      "user": "your-user",
+      "docker": "claude-container",
+      "pollIntervalSeconds": 30
+    }
+  ]
+}
+```
+
+### Agent 配置 (`~/.claude-monitor/agent-config.json`)
+
+| 字段 | 说明 |
+|------|------|
+| `serverUrl` | Server 地址（Tailscale 主机名） |
+| `apiKey` | 需与 server 配置一致 |
+| `machineName` | 本机显示名称 |
+| `environment` | `local` / `ssh` / `docker` |
+| `pollIntervalSeconds` | 扫描会话间隔（默认：5 秒） |
+| `heartbeatIntervalSeconds` | 无变化时强制上报间隔（默认：30 秒） |
+
+## API
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| `POST` | `/api/report` | Agent 推送会话状态 |
+| `GET` | `/api/sessions` | 获取所有可见会话 |
+| `GET` | `/api/sessions?includeHidden=true` | 包含已隐藏的会话 |
+| `DELETE` | `/api/sessions/:id` | 隐藏一个会话 |
+| `POST` | `/api/sessions/:id/restore` | 恢复一个被隐藏的会话 |
+
+## 状态检测原理
+
+Agent 通过以下方式检测会话状态：
+
+1. 扫描 `~/.claude/projects/*/<session-uuid>.jsonl` 查找会话文件
+2. 通过 `~/.claude/tasks/<sessionId>/.lock` 文件检测 PID 存活（Claude 进程持有该文件句柄）
+3. 读取 JSONL 文件末尾判断状态：
+   - **active**：文件近期有写入 + PID 存活
+   - **waiting**：最后一条 assistant 消息包含 `tool_use` 但没有后续 user 响应
+   - **compacting**：最后一条记录为 `system:compact_boundary`
+   - **idle**：PID 已死或文件长时间未更新
+
+## 技术栈
+
+- **Server**: TypeScript, Fastify, SQLite (better-sqlite3)
+- **Agent**: TypeScript, Node.js
+- **UI**: Electron, 原生 HTML/CSS/JS
+- **共享类型**: TypeScript (npm workspace)
+
+## 许可证
+
+[MIT](LICENSE)

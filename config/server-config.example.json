@@ -1,0 +1,20 @@
+{
+  "port": 19876,
+  "apiKey": "change-me-to-a-secret-key",
+  "autoHideIdleDays": 2,
+  "sshTargets": [
+    {
+      "name": "remote-server",
+      "host": "remote.tailnet-name.ts.net",
+      "user": "your-user",
+      "pollIntervalSeconds": 30
+    },
+    {
+      "name": "remote-docker",
+      "host": "remote.tailnet-name.ts.net",
+      "user": "your-user",
+      "docker": "claude-container",
+      "pollIntervalSeconds": 30
+    }
+  ]
+}

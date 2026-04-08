@@ -1,0 +1,41 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "19876:19876"
+    volumes:
+      - server-data:/data
+      - ./config:/config:ro
+      # Mount SSH keys if using SSH polling (optional)
+      # - ~/.ssh:/root/.ssh:ro
+    network_mode: "service:tailscale"
+    restart: unless-stopped
+    environment:
+      - CLAUDE_MONITOR_CONFIG=/config/server-config.json
+      - CLAUDE_MONITOR_DB=/data/server.db
+    depends_on:
+      - tailscale
+
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: claude-monitor
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      # Set your auth key here or via .env file
+      - TS_AUTHKEY=${TS_AUTHKEY:-}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      # Expose server port on tailscale network
+      - TS_SERVE_CONFIG=/config/ts-serve.json
+    restart: unless-stopped
+
+volumes:
+  server-data:
+  tailscale-state:

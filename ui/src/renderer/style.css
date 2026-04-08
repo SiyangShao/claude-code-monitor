@@ -1,0 +1,308 @@
+/* ===== Theme Variables ===== */
+:root {
+  color-scheme: light dark;
+
+  /* Dark mode (default) */
+  --bg-primary: #1c1c1e;
+  --bg-secondary: #2c2c2e;
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  --border: #3a3a3c;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5ea;
+  --text-tertiary: #8e8e93;
+  --text-muted: #636366;
+  --bar-bg: #3a3a3c;
+  --btn-border: #48484a;
+  --btn-hover-bg: #48484a;
+  --scrollbar-thumb: #48484a;
+  --scrollbar-thumb-hover: #636366;
+
+  /* Status colors (same in both modes) */
+  --status-active: #30d158;
+  --status-waiting: #ff9f0a;
+  --status-compacting: #0a84ff;
+  --status-idle: #636366;
+  --status-active-glow: rgba(48, 209, 88, 0.4);
+  --status-waiting-glow: rgba(255, 159, 10, 0.4);
+  --status-compacting-glow: rgba(10, 132, 255, 0.4);
+  --status-error: #ff453a;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f2f2f7;
+    --bg-hover: rgba(0, 0, 0, 0.05);
+    --border: #d1d1d6;
+    --text-primary: #000000;
+    --text-secondary: #1c1c1e;
+    --text-tertiary: #8e8e93;
+    --text-muted: #aeaeb2;
+    --bar-bg: #e5e5ea;
+    --btn-border: #c7c7cc;
+    --btn-hover-bg: #e5e5ea;
+    --scrollbar-thumb: #c7c7cc;
+    --scrollbar-thumb-hover: #aeaeb2;
+
+    --status-active: #34c759;
+    --status-waiting: #ff9500;
+    --status-compacting: #007aff;
+    --status-idle: #8e8e93;
+    --status-active-glow: rgba(52, 199, 89, 0.3);
+    --status-waiting-glow: rgba(255, 149, 0, 0.3);
+    --status-compacting-glow: rgba(0, 122, 255, 0.3);
+    --status-error: #ff3b30;
+  }
+}
+
+/* ===== Base ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  overflow-y: auto;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Header ===== */
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+#status-summary {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ===== Productivity Bar ===== */
+#productivity-bar {
+  display: flex;
+  height: 6px;
+  margin: 8px 14px;
+  border-radius: 3px;
+  overflow: hidden;
+  gap: 1px;
+  background: var(--bar-bg);
+}
+
+.bar-segment {
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.bar-segment.active { background: var(--status-active); }
+.bar-segment.waiting { background: var(--status-waiting); }
+.bar-segment.compacting { background: var(--status-compacting); }
+.bar-segment.idle { background: var(--status-idle); }
+
+/* ===== Sessions ===== */
+#sessions {
+  padding: 4px 0;
+}
+
+#empty-state {
+  display: none;
+  text-align: center;
+  padding: 40px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ===== Machine Group ===== */
+.machine-group {
+  margin-bottom: 4px;
+}
+
+.machine-header {
+  padding: 8px 14px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.machine-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 14px;
+}
+
+/* ===== Session Row ===== */
+.session {
+  display: flex;
+  align-items: center;
+  padding: 5px 14px;
+  cursor: default;
+  transition: background 0.1s;
+  gap: 6px;
+  border-radius: 6px;
+  margin: 0 4px;
+}
+
+.session:hover {
+  background: var(--bg-hover);
+}
+
+/* Status indicator */
+.status-indicator {
+  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.active { background: var(--status-active); box-shadow: 0 0 6px var(--status-active-glow); }
+.status-dot.waiting { background: var(--status-waiting); box-shadow: 0 0 6px var(--status-waiting-glow); }
+.status-dot.compacting { background: var(--status-compacting); box-shadow: 0 0 6px var(--status-compacting-glow); }
+.status-dot.idle { background: var(--status-idle); }
+
+/* Session info */
+.session-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.session-name {
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.session-meta {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+  line-height: 1.3;
+}
+
+/* Time indicator */
+.session-time {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Action buttons */
+.session-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.session:hover .session-actions {
+  opacity: 1;
+}
+
+.btn {
+  background: none;
+  border: 1px solid var(--btn-border);
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.btn:hover {
+  background: var(--btn-hover-bg);
+  color: var(--text-primary);
+}
+
+.btn.copy {
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 9px;
+}
+
+/* ===== Footer ===== */
+#footer {
+  display: flex;
+  justify-content: center;
+  padding: 6px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  position: sticky;
+  bottom: 0;
+}
+
+#footer .btn {
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* ===== Connection Status ===== */
+.connection-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.connection-status.connected {
+  color: var(--status-active);
+}
+
+.connection-status.disconnected {
+  color: var(--status-error);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
