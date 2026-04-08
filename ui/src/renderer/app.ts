@@ -209,16 +209,19 @@ function renderSessions(sessions: MonitorSession[]): void {
   input.focus();
   input.select();
 
+  let committed = false;
   const commit = async () => {
+    if (committed) return;
+    committed = true;
     const newTitle = input.value.trim() || null;
-    input.removeEventListener("blur", commit);
+    el.textContent = newTitle || current;
     await api.renameSession(sessionId, newTitle);
   };
   input.addEventListener("blur", commit);
   input.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.key === "Enter") input.blur();
     if (e.key === "Escape") {
-      input.removeEventListener("blur", commit);
+      committed = true;
       el.textContent = current;
     }
   });
