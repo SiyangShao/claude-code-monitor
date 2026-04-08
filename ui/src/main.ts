@@ -223,6 +223,7 @@ async function fetchSessions(): Promise<MonitorSession[]> {
 
 async function updateSessions(): Promise<void> {
   const sessions = await fetchSessions();
+  console.log(`[monitor] polled ${sessions.length} sessions from ${config.serverUrl}`);
   const worstStatus = getWorstStatus(sessions);
 
   currentStatus = worstStatus;
@@ -333,6 +334,10 @@ app.whenReady().then(() => {
 
   ipcMain.on("open-settings", () => {
     createSettingsWindow();
+  });
+
+  ipcMain.handle("get-sessions", async () => {
+    return await fetchSessions();
   });
 
   // ===== Polling =====

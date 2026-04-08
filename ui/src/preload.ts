@@ -25,4 +25,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openSettings: () => {
     ipcRenderer.send("open-settings");
   },
+  getSessions: () => {
+    return ipcRenderer.invoke("get-sessions");
+  },
 });

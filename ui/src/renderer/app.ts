@@ -22,6 +22,7 @@ declare global {
       getConfig: () => Promise<{ serverUrl: string; apiKey: string }>;
       saveConfig: (config: { serverUrl: string; apiKey: string }) => Promise<boolean>;
       openSettings: () => void;
+      getSessions: () => Promise<MonitorSession[]>;
     };
   }
 }
@@ -167,5 +168,12 @@ function renderSessions(sessions: MonitorSession[]): void {
 
 // Listen for updates from main process
 window.electronAPI.onSessionsUpdate((sessions) => {
+  console.log("[renderer] received sessions-update:", sessions.length);
+  renderSessions(sessions);
+});
+
+// Also pull sessions on load (in case we missed the push)
+window.electronAPI.getSessions().then((sessions) => {
+  console.log("[renderer] initial pull:", sessions.length);
   renderSessions(sessions);
 });
