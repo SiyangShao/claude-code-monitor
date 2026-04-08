@@ -1,5 +1,7 @@
 # Claude Code Monitor
 
+[中文文档](README_zh_CN.md)
+
 A lightweight monitoring tool for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) sessions across multiple machines. See at a glance which sessions are active, waiting, compacting, or idle — across local, SSH, and Docker environments.
 
 **Monitor-only** — no control features. Designed to be simple.

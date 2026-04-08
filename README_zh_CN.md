@@ -1,5 +1,7 @@
 # Claude Code Monitor
 
+[English](README.md)
+
 一个轻量级的 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 会话监控工具，支持跨多台机器监控。一眼看清哪些会话正在活跃、等待中、压缩中或空闲——覆盖本地、SSH 远程和 Docker 环境。
 
 **纯监控** —— 不包含控制功能。设计目标：简单。
