@@ -80,6 +80,9 @@ function renderProductivityBar(sessions: MonitorSession[]): void {
 
 function renderSessions(sessions: MonitorSession[]): void {
   const container = document.getElementById("sessions")!;
+
+  // Don't re-render while user is editing a session name
+  if (container.querySelector(".rename-input")) return;
   const emptyState = document.getElementById("empty-state")!;
   const summary = document.getElementById("status-summary")!;
 
