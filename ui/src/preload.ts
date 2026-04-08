@@ -16,4 +16,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   restoreSession: (sessionId: string) => {
     return ipcRenderer.invoke("restore-session", sessionId);
   },
+  getConfig: () => {
+    return ipcRenderer.invoke("get-config");
+  },
+  saveConfig: (config: { serverUrl: string; apiKey: string }) => {
+    return ipcRenderer.invoke("save-config", config);
+  },
+  openSettings: () => {
+    return ipcRenderer.invoke("open-settings");
+  },
 });

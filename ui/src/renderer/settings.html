@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Settings</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      padding: 24px;
+      user-select: none;
+      color-scheme: light dark;
+      background: light-dark(#ffffff, #1c1c1e);
+      color: light-dark(#000000, #e5e5ea);
+    }
+    h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: light-dark(#000, #fff);
+    }
+    .field {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: light-dark(#666, #8e8e93);
+      margin-bottom: 4px;
+    }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid light-dark(#d1d1d6, #48484a);
+      background: light-dark(#fff, #2c2c2e);
+      color: light-dark(#000, #e5e5ea);
+      font-size: 13px;
+      font-family: "SF Mono", Menlo, monospace;
+      outline: none;
+    }
+    input:focus {
+      border-color: #0a84ff;
+      box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+    }
+    .hint {
+      font-size: 11px;
+      color: light-dark(#999, #636366);
+      margin-top: 3px;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    button {
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid light-dark(#d1d1d6, #48484a);
+      background: light-dark(#fff, #2c2c2e);
+      color: light-dark(#000, #e5e5ea);
+    }
+    button:hover {
+      background: light-dark(#f0f0f0, #3a3a3c);
+    }
+    button.primary {
+      background: #0a84ff;
+      color: white;
+      border-color: #0a84ff;
+    }
+    button.primary:hover {
+      background: #0070e0;
+    }
+    #status {
+      font-size: 12px;
+      margin-top: 12px;
+      text-align: center;
+      min-height: 16px;
+    }
+    #status.success { color: #30d158; }
+    #status.error { color: #ff453a; }
+  </style>
+</head>
+<body>
+  <h2>Claude Code Monitor Settings</h2>
+  <div class="field">
+    <label>Server URL</label>
+    <input type="text" id="serverUrl" placeholder="http://claude-monitor.tailnet.ts.net:19876">
+    <div class="hint">The URL of your claude-code-monitor server</div>
+  </div>
+  <div class="field">
+    <label>API Key (optional)</label>
+    <input type="password" id="apiKey" placeholder="Leave empty if not configured on server">
+  </div>
+  <div class="actions">
+    <button id="testBtn">Test Connection</button>
+    <button id="saveBtn" class="primary">Save</button>
+  </div>
+  <div id="status"></div>
+
+  <script>
+    const serverUrlInput = document.getElementById("serverUrl");
+    const apiKeyInput = document.getElementById("apiKey");
+    const statusEl = document.getElementById("status");
+
+    // Load current config
+    window.electronAPI.getConfig().then((cfg) => {
+      serverUrlInput.value = cfg.serverUrl || "";
+      apiKeyInput.value = cfg.apiKey || "";
+    });
+
+    document.getElementById("testBtn").addEventListener("click", async () => {
+      const url = serverUrlInput.value.replace(/\/$/, "");
+      statusEl.textContent = "Testing...";
+      statusEl.className = "";
+      try {
+        const resp = await fetch(url + "/api/sessions");
+        if (resp.ok) {
+          const data = await resp.json();
+          statusEl.textContent = "Connected! " + data.sessions.length + " sessions found.";
+          statusEl.className = "success";
+        } else {
+          statusEl.textContent = "Server returned " + resp.status;
+          statusEl.className = "error";
+        }
+      } catch (e) {
+        statusEl.textContent = "Connection failed: " + e.message;
+        statusEl.className = "error";
+      }
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", async () => {
+      const cfg = {
+        serverUrl: serverUrlInput.value.replace(/\/$/, ""),
+        apiKey: apiKeyInput.value,
+      };
+      await window.electronAPI.saveConfig(cfg);
+      statusEl.textContent = "Saved!";
+      statusEl.className = "success";
+      setTimeout(() => window.close(), 800);
+    });
+  </script>
+</body>
+</html>

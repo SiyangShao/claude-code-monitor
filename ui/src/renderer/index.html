@@ -9,7 +9,10 @@
 <body>
   <div id="header">
     <span class="title">Claude Code Monitor</span>
-    <span id="status-summary"></span>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span id="status-summary"></span>
+      <button class="btn" onclick="openSettings()" title="Settings" style="opacity:0.6; border:none; font-size:14px;">&#9881;</button>
+    </div>
   </div>
   <div id="productivity-bar"></div>
   <div id="sessions"></div>

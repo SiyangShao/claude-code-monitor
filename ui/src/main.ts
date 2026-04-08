@@ -1,62 +1,118 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, clipboard, screen, ipcMain, nativeTheme } from "electron";
+import {
+  app,
+  BrowserWindow,
+  Tray,
+  nativeImage,
+  clipboard,
+  screen,
+  ipcMain,
+  nativeTheme,
+  Menu,
+  dialog,
+} from "electron";
 import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
 import type { MonitorSession, SessionStatus } from "@claude-monitor/shared";
 
-let tray: Tray | null = null;
-let mainWindow: BrowserWindow | null = null;
+// ===== Config =====
 
-const SERVER_URL = process.env.CLAUDE_MONITOR_SERVER || "http://localhost:19876";
-const API_KEY = process.env.CLAUDE_MONITOR_API_KEY || "";
-const POLL_INTERVAL = 5000;
-
-function authHeaders(): Record<string, string> {
-  return API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {};
+interface UIConfig {
+  serverUrl: string;
+  apiKey: string;
 }
 
-// Status colors for tray icon
-const STATUS_COLORS: Record<SessionStatus, string> = {
-  active: "#30d158",    // system green
-  waiting: "#ff9f0a",   // system orange
-  compacting: "#0a84ff", // system blue
-  idle: "#636366",      // system gray
-};
+const CONFIG_PATH = path.join(os.homedir(), ".claude-monitor", "ui-config.json");
 
-const STATUS_EMOJI: Record<SessionStatus, string> = {
-  active: "\u26a1",
-  waiting: "\u23f3",
-  compacting: "\ud83e\uddf9",
-  idle: "\ud83d\udca4",
-};
+function loadConfig(): UIConfig {
+  const defaults: UIConfig = {
+    serverUrl: "http://localhost:19876",
+    apiKey: "",
+  };
+  try {
+    const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
+    return { ...defaults, ...JSON.parse(raw) };
+  } catch {
+    return defaults;
+  }
+}
 
+function saveConfig(config: UIConfig): void {
+  const dir = path.dirname(CONFIG_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+let config = loadConfig();
+
+function authHeaders(): Record<string, string> {
+  return config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {};
+}
+
+// ===== Tray Icon =====
+
+const POLL_INTERVAL = 5000;
+let tray: Tray | null = null;
+let mainWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 let currentStatus: SessionStatus = "idle";
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const STATUS_COLORS: Record<SessionStatus, string> = {
+  active: "#30d158",
+  waiting: "#ff9f0a",
+  compacting: "#0a84ff",
+  idle: "#636366",
+};
 
 function createTrayIcon(status: SessionStatus): Electron.NativeImage {
   const color = STATUS_COLORS[status];
-  const size = 22;
-  const textFill = nativeTheme.shouldUseDarkColors ? "white" : "white";
-  const svg = `
-    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${color}" opacity="0.9"/>
-      <text x="${size / 2}" y="${size / 2 + 1}" text-anchor="middle" dominant-baseline="central" fill="${textFill}" font-size="12" font-family="monospace">&gt;_</text>
-    </svg>
-  `;
-  return nativeImage.createFromBuffer(
-    Buffer.from(svg),
-    { width: size, height: size }
-  );
+  const size = 32; // render at 2x for retina
+  const canvas = Buffer.alloc(size * size * 4); // RGBA
+
+  // Draw a filled circle
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 2;
+  const [cr, cg, cb] = hexToRgb(color);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= r) {
+        const idx = (y * size + x) * 4;
+        canvas[idx] = cr;
+        canvas[idx + 1] = cg;
+        canvas[idx + 2] = cb;
+        canvas[idx + 3] = 230; // slightly transparent
+      }
+    }
+  }
+
+  const img = nativeImage.createFromBuffer(canvas, { width: size, height: size });
+  return img.resize({ width: 16, height: 16 });
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.substring(0, 2), 16),
+    parseInt(h.substring(2, 4), 16),
+    parseInt(h.substring(4, 6), 16),
+  ];
 }
 
 function getWorstStatus(sessions: MonitorSession[]): SessionStatus {
   const priority: SessionStatus[] = ["waiting", "active", "compacting", "idle"];
-  for (const status of priority) {
-    if (sessions.some((s) => s.status === status)) {
-      return status;
-    }
+  for (const s of priority) {
+    if (sessions.some((sess) => sess.status === s)) return s;
   }
   return "idle";
 }
 
-function createWindow(): BrowserWindow {
+// ===== Windows =====
+
+function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 420,
     height: 500,
@@ -65,6 +121,7 @@ function createWindow(): BrowserWindow {
     resizable: true,
     skipTaskbar: true,
     alwaysOnTop: true,
+    transparent: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -73,61 +130,88 @@ function createWindow(): BrowserWindow {
   });
 
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+  win.on("blur", () => win.hide());
+  return win;
+}
 
-  win.on("blur", () => {
-    win.hide();
+function createSettingsWindow(): BrowserWindow {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.focus();
+    return settingsWindow;
+  }
+
+  const win = new BrowserWindow({
+    width: 480,
+    height: 280,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: "Claude Code Monitor - Settings",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
   });
 
+  win.loadFile(path.join(__dirname, "renderer", "settings.html"));
+  win.on("closed", () => {
+    settingsWindow = null;
+  });
+
+  settingsWindow = win;
   return win;
 }
 
 function positionWindowNearTray(win: BrowserWindow, trayBounds: Electron.Rectangle): void {
   const winBounds = win.getBounds();
-  const display = screen.getDisplayNearestPoint({
-    x: trayBounds.x,
-    y: trayBounds.y,
-  });
+  const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y });
 
   let x = Math.round(trayBounds.x + trayBounds.width / 2 - winBounds.width / 2);
   let y: number;
 
-  // If tray is at top of screen (macOS), show below
   if (trayBounds.y < display.bounds.height / 2) {
     y = trayBounds.y + trayBounds.height + 4;
   } else {
     y = trayBounds.y - winBounds.height - 4;
   }
 
-  // Keep within screen bounds
   x = Math.max(display.bounds.x, Math.min(x, display.bounds.x + display.bounds.width - winBounds.width));
-
   win.setPosition(x, y, false);
 }
 
+// ===== Networking =====
+
 async function fetchSessions(): Promise<MonitorSession[]> {
   try {
-    const response = await fetch(`${SERVER_URL}/api/sessions`);
+    const response = await fetch(`${config.serverUrl}/api/sessions`);
     if (!response.ok) return [];
-    const data = await response.json() as { sessions: MonitorSession[] };
+    const data = (await response.json()) as { sessions: MonitorSession[] };
     return data.sessions;
   } catch {
     return [];
   }
 }
 
+// ===== App Lifecycle =====
+
 app.whenReady().then(() => {
-  // Create tray
-  tray = new Tray(createTrayIcon("idle" as SessionStatus));
+  // Hide dock icon on macOS (tray-only app)
+  if (process.platform === "darwin") {
+    app.dock.hide();
+  }
+
+  tray = new Tray(createTrayIcon("idle"));
   tray.setToolTip("Claude Code Monitor");
 
-  mainWindow = createWindow();
+  // Right-click context menu
+  const contextMenu = Menu.buildFromTemplate([
+    { label: "Settings...", click: () => createSettingsWindow() },
+    { type: "separator" },
+    { label: "Quit", click: () => app.quit() },
+  ]);
 
-  // Re-render tray icon and notify renderer on system theme change
-  nativeTheme.on("updated", () => {
-    if (tray) {
-      tray.setImage(createTrayIcon(currentStatus));
-    }
-  });
+  mainWindow = createMainWindow();
 
   tray.on("click", (_event, bounds) => {
     if (!mainWindow) return;
@@ -140,14 +224,23 @@ app.whenReady().then(() => {
     }
   });
 
-  // IPC handlers
+  tray.on("right-click", () => {
+    if (tray) tray.popUpContextMenu(contextMenu);
+  });
+
+  nativeTheme.on("updated", () => {
+    if (tray) tray.setImage(createTrayIcon(currentStatus));
+  });
+
+  // ===== IPC Handlers =====
+
   ipcMain.on("copy-to-clipboard", (_event, text: string) => {
     clipboard.writeText(text);
   });
 
   ipcMain.handle("hide-session", async (_event, sessionId: string) => {
     try {
-      const resp = await fetch(`${SERVER_URL}/api/sessions/${sessionId}`, {
+      const resp = await fetch(`${config.serverUrl}/api/sessions/${sessionId}`, {
         method: "DELETE",
         headers: authHeaders(),
       });
@@ -159,17 +252,37 @@ app.whenReady().then(() => {
 
   ipcMain.handle("restore-session", async (_event, sessionId: string) => {
     try {
-      const resp = await fetch(
-        `${SERVER_URL}/api/sessions/${sessionId}/restore`,
-        { method: "POST", headers: authHeaders() }
-      );
+      const resp = await fetch(`${config.serverUrl}/api/sessions/${sessionId}/restore`, {
+        method: "POST",
+        headers: authHeaders(),
+      });
       return resp.ok;
     } catch {
       return false;
     }
   });
 
-  // Poll for sessions
+  ipcMain.handle("get-config", () => {
+    return { serverUrl: config.serverUrl, apiKey: config.apiKey };
+  });
+
+  ipcMain.handle("save-config", async (_event, newConfig: { serverUrl: string; apiKey: string }) => {
+    config.serverUrl = newConfig.serverUrl;
+    config.apiKey = newConfig.apiKey;
+    saveConfig(config);
+    // Restart polling with new config
+    if (pollTimer) clearInterval(pollTimer);
+    updateSessions();
+    pollTimer = setInterval(updateSessions, POLL_INTERVAL);
+    return true;
+  });
+
+  ipcMain.handle("open-settings", () => {
+    createSettingsWindow();
+  });
+
+  // ===== Polling =====
+
   const updateSessions = async () => {
     const sessions = await fetchSessions();
     const worstStatus = getWorstStatus(sessions);
@@ -187,14 +300,18 @@ app.whenReady().then(() => {
       );
     }
 
-    // Send sessions to renderer
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("sessions-update", sessions);
     }
   };
 
   updateSessions();
-  setInterval(updateSessions, POLL_INTERVAL);
+  pollTimer = setInterval(updateSessions, POLL_INTERVAL);
+
+  // Show settings on first launch if no config exists
+  if (config.serverUrl === "http://localhost:19876") {
+    createSettingsWindow();
+  }
 });
 
 app.on("window-all-closed", () => {

@@ -19,6 +19,9 @@ declare global {
       copyToClipboard: (text: string) => void;
       hideSession: (sessionId: string) => Promise<boolean>;
       restoreSession: (sessionId: string) => Promise<boolean>;
+      getConfig: () => Promise<{ serverUrl: string; apiKey: string }>;
+      saveConfig: (config: { serverUrl: string; apiKey: string }) => Promise<boolean>;
+      openSettings: () => void;
     };
   }
 }
@@ -156,6 +159,10 @@ function renderSessions(sessions: MonitorSession[]): void {
 
 (window as any).hideSession = async (sessionId: string) => {
   await window.electronAPI.hideSession(sessionId);
+};
+
+(window as any).openSettings = () => {
+  window.electronAPI.openSettings();
 };
 
 // Listen for updates from main process
