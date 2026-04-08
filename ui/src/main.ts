@@ -214,7 +214,9 @@ app.whenReady().then(() => {
   mainWindow = createMainWindow();
 
   tray.on("click", (_event, bounds) => {
-    if (!mainWindow) return;
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      mainWindow = createMainWindow();
+    }
     if (mainWindow.isVisible()) {
       mainWindow.hide();
     } else {
@@ -225,11 +227,11 @@ app.whenReady().then(() => {
   });
 
   tray.on("right-click", () => {
-    if (tray) tray.popUpContextMenu(contextMenu);
+    if (tray && !tray.isDestroyed()) tray.popUpContextMenu(contextMenu);
   });
 
   nativeTheme.on("updated", () => {
-    if (tray) tray.setImage(createTrayIcon(currentStatus));
+    if (tray && !tray.isDestroyed()) tray.setImage(createTrayIcon(currentStatus));
   });
 
   // ===== IPC Handlers =====
@@ -288,7 +290,7 @@ app.whenReady().then(() => {
     const worstStatus = getWorstStatus(sessions);
 
     currentStatus = worstStatus;
-    if (tray) {
+    if (tray && !tray.isDestroyed()) {
       tray.setImage(createTrayIcon(worstStatus));
       const counts = {
         active: sessions.filter((s) => s.status === "active").length,
