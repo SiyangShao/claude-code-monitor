@@ -27,12 +27,21 @@
 
 - 状态：`active`（活跃）/ `waiting`（等待中）/ `compacting`（压缩中）/ `idle`（空闲）
 - 工作目录
-- 会话 slug/标题
+- 会话 slug/标题（双击可自定义命名）
 - 会话 UUID（一键复制）
 - 机器名称和环境类型
-- 最后活动时间
+- 最后活动时间和会话存活时间
 
 空闲超过 2 天的会话自动隐藏（可配置）。隐藏的会话在状态变为非空闲时自动恢复显示。
+
+## 托盘图标
+
+系统托盘图标颜色反映最紧急的状态：
+
+- **红色** — 至少有一个会话正在等待（需要关注）
+- **绿色** — 至少有一个会话活跃（无等待）
+- **蓝色** — 正在压缩上下文
+- **灰色** — 所有会话空闲
 
 ## 快速开始
 
@@ -85,13 +94,19 @@ npm install
 npm run dev
 ```
 
+首次启动时会弹出设置窗口 — 输入 Server 地址（如 `http://claude-monitor.your-tailnet.ts.net:19876`）和可选的 API Key。
+
 打包为独立应用：
 
 ```bash
-npm run package         # 当前平台
-npm run package:mac     # macOS .dmg
-npm run package:linux   # Linux .AppImage
+# macOS
+npm run build && npx electron-builder --mac --config electron-builder.yml
+
+# Linux
+npm run build && npx electron-builder --linux --config electron-builder.yml
 ```
+
+输出在 `ui/release/` 目录。
 
 ## 配置
 
@@ -138,8 +153,11 @@ npm run package:linux   # Linux .AppImage
 | `POST` | `/api/report` | Agent 推送会话状态 |
 | `GET` | `/api/sessions` | 获取所有可见会话 |
 | `GET` | `/api/sessions?includeHidden=true` | 包含已隐藏的会话 |
+| `PATCH` | `/api/sessions/:id` | 设置自定义标题（`{"customTitle": "..."}`） |
 | `DELETE` | `/api/sessions/:id` | 隐藏一个会话 |
 | `POST` | `/api/sessions/:id/restore` | 恢复一个被隐藏的会话 |
+
+所有写操作（`POST`、`PATCH`、`DELETE`）需要 `Authorization: Bearer <apiKey>` 请求头。`GET` 无需认证。
 
 ## 状态检测原理
 

@@ -27,12 +27,21 @@ Each session shows:
 
 - Status: `active` / `waiting` / `compacting` / `idle`
 - Working directory
-- Session slug/title
+- Session slug/title (double-click to set a custom name)
 - Session UUID (one-click copy)
 - Machine name and environment type
-- Last activity time
+- Last activity time and session age
 
 Sessions idle > 2 days are auto-hidden (configurable). Hidden sessions auto-restore when they become non-idle.
+
+## Tray Icon
+
+The system tray icon color reflects the most urgent status:
+
+- **Red** — at least one session is waiting (needs attention)
+- **Green** — at least one session is active (no waiting)
+- **Blue** — compacting in progress
+- **Gray** — all sessions idle
 
 ## Quick Start
 
@@ -85,13 +94,19 @@ npm install
 npm run dev
 ```
 
+On first launch, a Settings window opens — enter your server URL (e.g. `http://claude-monitor.your-tailnet.ts.net:19876`) and optional API key.
+
 To package as a standalone app:
 
 ```bash
-npm run package         # current platform
-npm run package:mac     # macOS .dmg
-npm run package:linux   # Linux .AppImage
+# macOS
+npm run build && npx electron-builder --mac --config electron-builder.yml
+
+# Linux
+npm run build && npx electron-builder --linux --config electron-builder.yml
 ```
+
+Output goes to `ui/release/`.
 
 ## Configuration
 
@@ -138,8 +153,11 @@ npm run package:linux   # Linux .AppImage
 | `POST` | `/api/report` | Agent pushes session state |
 | `GET` | `/api/sessions` | Fetch all visible sessions |
 | `GET` | `/api/sessions?includeHidden=true` | Include hidden sessions |
+| `PATCH` | `/api/sessions/:id` | Set custom title (`{"customTitle": "..."}`) |
 | `DELETE` | `/api/sessions/:id` | Hide a session |
 | `POST` | `/api/sessions/:id/restore` | Restore a hidden session |
+
+All mutation endpoints (`POST`, `PATCH`, `DELETE`) require `Authorization: Bearer <apiKey>`. `GET` is unauthenticated.
 
 ## How Status Detection Works
 
