@@ -67,9 +67,12 @@ body {
   font-size: 13px;
   background: var(--bg-primary);
   color: var(--text-secondary);
-  overflow-y: auto;
+  overflow: hidden;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 /* ===== Header ===== */
@@ -120,6 +123,12 @@ body {
 /* ===== Sessions ===== */
 #sessions {
   padding: 4px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+#sessions::-webkit-scrollbar {
+  display: none;
 }
 
 #empty-state {
