@@ -31,6 +31,14 @@ config/server-config.json
 *.db-journal
 *.db-wal
 
+# Claude Code
+.claude/
+
+# Swift build
+macos-ui/.build/
+macos-ui/.swiftpm/
+macos-ui/*.app
+
 # OS
 .DS_Store
 Thumbs.db
