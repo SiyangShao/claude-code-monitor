@@ -85,7 +85,7 @@ function renderSessions(sessions: MonitorSession[]): void {
   if (sessions.length === 0) {
     container.innerHTML = "";
     emptyState.style.display = "block";
-    summary.textContent = "";
+    summary.textContent = "connecting...";
     renderProductivityBar([]);
     return;
   }

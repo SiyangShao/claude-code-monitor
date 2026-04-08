@@ -57,6 +57,7 @@ let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let currentStatus: SessionStatus = "idle";
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let settingsJustOpened = false;
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   active: "#30d158",
@@ -114,8 +115,8 @@ function getWorstStatus(sessions: MonitorSession[]): SessionStatus {
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 420,
-    height: 500,
+    width: 340,
+    height: 420,
     show: false,
     frame: false,
     resizable: true,
@@ -130,11 +131,24 @@ function createMainWindow(): BrowserWindow {
   });
 
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
-  win.on("blur", () => win.hide());
+  // Delay blur-hide so that clicking the settings button inside the window
+  // has time to fire before the window disappears.
+  win.on("blur", () => {
+    setTimeout(() => {
+      if (settingsJustOpened) {
+        settingsJustOpened = false;
+        return;
+      }
+      if (!win.isDestroyed() && !win.isFocused()) {
+        win.hide();
+      }
+    }, 150);
+  });
   return win;
 }
 
 function createSettingsWindow(): BrowserWindow {
+  settingsJustOpened = true;
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
     return settingsWindow;
@@ -165,6 +179,16 @@ function createSettingsWindow(): BrowserWindow {
 
 function positionWindowNearTray(win: BrowserWindow, trayBounds: Electron.Rectangle): void {
   const winBounds = win.getBounds();
+
+  // On some macOS versions tray bounds are all zeros; fall back to top-right of primary display
+  if (trayBounds.width === 0 && trayBounds.height === 0) {
+    const primary = screen.getPrimaryDisplay();
+    const x = primary.workArea.x + primary.workArea.width - winBounds.width - 8;
+    const y = primary.workArea.y + 4;
+    win.setPosition(x, y, false);
+    return;
+  }
+
   const display = screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y });
 
   let x = Math.round(trayBounds.x + trayBounds.width / 2 - winBounds.width / 2);

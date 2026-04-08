@@ -123,7 +123,7 @@ body {
 }
 
 #empty-state {
-  display: none;
+  display: block;
   text-align: center;
   padding: 40px 14px;
   color: var(--text-muted);
