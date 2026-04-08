@@ -60,7 +60,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   active: "#30d158",
-  waiting: "#ff9f0a",
+  waiting: "#ff453a",  // Red — needs attention
   compacting: "#0a84ff",
   idle: "#636366",
 };
@@ -114,14 +114,17 @@ function getWorstStatus(sessions: MonitorSession[]): SessionStatus {
 
 function createMainWindow(): BrowserWindow {
   const win = new BrowserWindow({
-    width: 340,
-    height: 420,
+    width: 300,
+    height: 320,
     show: false,
     frame: false,
-    resizable: true,
+    resizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
     transparent: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -308,6 +311,7 @@ app.whenReady().then(() => {
         method: "DELETE",
         headers: authHeaders(),
       });
+      if (resp.ok) updateSessions(); // Refresh UI immediately
       return resp.ok;
     } catch {
       return false;
