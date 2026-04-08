@@ -1,0 +1,81 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe": ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe>"]
+  "ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module": ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe>","<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module>"]
+  "test": ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe>","<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module>"]
+default: "main"
+nodes:
+  "/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor":
+    is-mutated: true
+commands:
+  "/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor-entitlement.plist":
+    tool: write-auxiliary-file
+    inputs: ["<entitlement-plist>","<com.apple.security.get-task-allow>"]
+    outputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor-entitlement.plist"]
+    description: "Write auxiliary file /Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor-entitlement.plist"
+
+  "/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/App/AppDelegate.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/App/ClaudeCodeMonitorApp.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Models/MonitorSession.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Models/SessionStore.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Services/APIClient.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Services/Settings.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/ContentView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/MachineGroupView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/SessionRowView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/SettingsView.swift"]
+    outputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/sources"]
+    description: "Write auxiliary file /Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/sources"
+
+  "/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/APIClient.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/AppDelegate.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ClaudeCodeMonitorApp.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ContentView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MachineGroupView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MonitorSession.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionRowView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionStore.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/Settings.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SettingsView.swift.o"]
+    outputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.product/Objects.LinkFileList"
+
+  "/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Library/Developer/CommandLineTools/usr/bin/swiftc"]
+    outputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt"
+
+  "<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe>":
+    tool: phony
+    inputs: ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe-CodeSigning>"]
+    outputs: ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe>"]
+
+  "<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/AppDelegate.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ClaudeCodeMonitorApp.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MonitorSession.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionStore.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/APIClient.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/Settings.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ContentView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MachineGroupView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionRowView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SettingsView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/Modules/ClaudeCodeMonitor.swiftmodule"]
+    outputs: ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module>"]
+
+  "C.ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe":
+    tool: shell
+    inputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/APIClient.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/AppDelegate.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ClaudeCodeMonitorApp.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ContentView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MachineGroupView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MonitorSession.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionRowView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionStore.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/Settings.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SettingsView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.product/Objects.LinkFileList"]
+    outputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/ClaudeCodeMonitor"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-L","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug","-o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor","-module-name","ClaudeCodeMonitor","-Xlinker","-no_warn_duplicate_libraries","-emit-executable","-Xlinker","-alias","-Xlinker","_ClaudeCodeMonitor_main","-Xlinker","_main","-Xlinker","-rpath","-Xlinker","@loader_path","@/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Library/Developer/CommandLineTools/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx14.0","-Xlinker","-add_ast_path","-Xlinker","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/Modules/ClaudeCodeMonitor.swiftmodule","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g"]
+
+  "C.ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe-entitlements":
+    tool: shell
+    inputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor-entitlement.plist"]
+    outputs: ["<ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.exe-CodeSigning>"]
+    description: "Applying debug entitlements to ./.build/arm64-apple-macosx/debug/ClaudeCodeMonitor"
+    args: ["codesign","--force","--sign","-","--entitlements","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor-entitlement.plist","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor"]
+
+  "C.ClaudeCodeMonitor-arm64-apple-macosx26.0-debug.module":
+    tool: shell
+    inputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/App/AppDelegate.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/App/ClaudeCodeMonitorApp.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Models/MonitorSession.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Models/SessionStore.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Services/APIClient.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Services/Settings.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/ContentView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/MachineGroupView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/SessionRowView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/Views/SettingsView.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/swift-version--1AB21518FC5DEDBE.txt","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/sources"]
+    outputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/AppDelegate.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ClaudeCodeMonitorApp.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MonitorSession.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionStore.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/APIClient.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/Settings.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/ContentView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/MachineGroupView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SessionRowView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/SettingsView.swift.o","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/Modules/ClaudeCodeMonitor.swiftmodule"]
+    description: "Compiling Swift Module 'ClaudeCodeMonitor' (10 sources)"
+    args: ["/Library/Developer/CommandLineTools/usr/bin/swiftc","-module-name","ClaudeCodeMonitor","-emit-dependencies","-emit-module","-emit-module-path","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/Modules/ClaudeCodeMonitor.swiftmodule","-output-file-map","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/output-file-map.json","-incremental","-c","@/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ClaudeCodeMonitor.build/sources","-I","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-j10","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/shaosy/Projects/claude-code-monitor/macos-ui/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","ClaudeCodeMonitor_main","-color-diagnostics","-swift-version","5","-I","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-L","/Library/Developer/CommandLineTools/Library/Developer/Frameworks","-plugin-path","/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing","-sdk","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-g","-Xcc","-isysroot","-Xcc","/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk","-Xcc","-fPIC","-Xcc","-g","-package-name","macos_ui"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/shaosy/Projects/claude-code-monitor/macos-ui/Sources/ClaudeCodeMonitor/","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Package.swift","/Users/shaosy/Projects/claude-code-monitor/macos-ui/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+
