@@ -57,7 +57,6 @@ let mainWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
 let currentStatus: SessionStatus = "idle";
 let pollTimer: ReturnType<typeof setInterval> | null = null;
-let settingsJustOpened = false;
 
 const STATUS_COLORS: Record<SessionStatus, string> = {
   active: "#30d158",
@@ -131,24 +130,22 @@ function createMainWindow(): BrowserWindow {
   });
 
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
-  // Delay blur-hide so that clicking the settings button inside the window
-  // has time to fire before the window disappears.
+  // On macOS, frameless alwaysOnTop windows can lose focus before click events
+  // reach buttons. Use a longer delay and check if a child window (settings) was opened.
   win.on("blur", () => {
     setTimeout(() => {
-      if (settingsJustOpened) {
-        settingsJustOpened = false;
-        return;
-      }
-      if (!win.isDestroyed() && !win.isFocused()) {
+      if (win.isDestroyed()) return;
+      // Don't hide if settings window is open or was just opened
+      if (settingsWindow && !settingsWindow.isDestroyed()) return;
+      if (!win.isFocused()) {
         win.hide();
       }
-    }, 150);
+    }, 300);
   });
   return win;
 }
 
 function createSettingsWindow(): BrowserWindow {
-  settingsJustOpened = true;
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
     return settingsWindow;
@@ -207,12 +204,17 @@ function positionWindowNearTray(win: BrowserWindow, trayBounds: Electron.Rectang
 // ===== Networking =====
 
 async function fetchSessions(): Promise<MonitorSession[]> {
+  const url = `${config.serverUrl}/api/sessions`;
   try {
-    const response = await fetch(`${config.serverUrl}/api/sessions`);
-    if (!response.ok) return [];
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`[monitor] fetch ${url} returned ${response.status}`);
+      return [];
+    }
     const data = (await response.json()) as { sessions: MonitorSession[] };
     return data.sessions;
-  } catch {
+  } catch (err) {
+    console.error(`[monitor] fetch ${url} failed:`, err);
     return [];
   }
 }
