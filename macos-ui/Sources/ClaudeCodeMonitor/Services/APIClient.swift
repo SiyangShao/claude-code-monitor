@@ -9,6 +9,7 @@ enum APIError: Error {
 struct APIClient {
     static func fetchSessions(serverURL: String, apiKey: String) async throws -> [MonitorSession] {
         let url = try buildURL(serverURL, path: "/api/sessions")
+        print("[api] fetching \(url)")
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
         addAuth(&request, apiKey: apiKey)
@@ -18,8 +19,10 @@ struct APIClient {
 
         do {
             let decoded = try JSONDecoder().decode(SessionsResponse.self, from: data)
+            print("[api] got \(decoded.sessions.count) sessions")
             return decoded.sessions
         } catch {
+            print("[api] decode error: \(error)")
             throw APIError.decodingError(error)
         }
     }
