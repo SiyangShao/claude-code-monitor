@@ -27,6 +27,7 @@ interface ElectronAPI {
 }
 
 const api = (window as any).electronAPI as ElectronAPI;
+let isRefreshing = false;
 
 const STATUS_EMOJI: Record<string, string> = {
   active: "\u26a1",
@@ -167,11 +168,16 @@ function renderSessions(sessions: MonitorSession[]): void {
     groupIndex++;
   }
 
-  // Detach the editing session row before replacing innerHTML
+  // Detach the editing session row before replacing innerHTML.
+  // Set isRefreshing so the blur handler doesn't fire commit.
   let editingRow: Element | null = null;
   if (editingSessionId) {
     editingRow = container.querySelector(`.session[data-session-id="${editingSessionId}"]`);
-    if (editingRow) editingRow.remove();
+    if (editingRow) {
+      isRefreshing = true;
+      editingRow.remove();
+      isRefreshing = false;
+    }
   }
 
   container.innerHTML = html;
@@ -211,7 +217,7 @@ function renderSessions(sessions: MonitorSession[]): void {
 
   let committed = false;
   const commit = async () => {
-    if (committed) return;
+    if (committed || isRefreshing) return;
     committed = true;
     const newTitle = input.value.trim() || null;
     el.textContent = newTitle || current;
