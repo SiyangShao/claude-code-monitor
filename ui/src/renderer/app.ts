@@ -81,11 +81,14 @@ function renderProductivityBar(sessions: MonitorSession[]): void {
 
 function renderSessions(sessions: MonitorSession[]): void {
   const container = document.getElementById("sessions")!;
-
-  // Don't re-render while user is editing a session name
-  if (container.querySelector(".rename-input")) return;
   const emptyState = document.getElementById("empty-state")!;
   const summary = document.getElementById("status-summary")!;
+
+  // Track which session is being renamed so we can skip it
+  const renameInput = container.querySelector(".rename-input") as HTMLInputElement | null;
+  const editingSessionId = renameInput
+    ? renameInput.closest(".session")?.getAttribute("data-session-id")
+    : null;
 
   if (sessions.length === 0) {
     container.innerHTML = "";
@@ -130,6 +133,15 @@ function renderSessions(sessions: MonitorSession[]): void {
     html += `<div class="machine-header">${escapeHtml(machine)} <span style="text-transform: none; font-weight: 400;">(${envLabel})</span></div>`;
 
     for (const s of machineSessions) {
+      // Skip re-rendering the session being edited
+      if (s.sessionId === editingSessionId) {
+        const existing = container.querySelector(`.session[data-session-id="${s.sessionId}"]`);
+        if (existing) {
+          html += existing.outerHTML;
+          continue;
+        }
+      }
+
       const displayName = s.customTitle || s.title || s.slug || shortPath(s.cwd) || s.sessionId.substring(0, 8);
       const projectPath = shortPath(s.cwd);
       const lastChange = formatTimeAgo(s.lastActivity);
@@ -155,7 +167,22 @@ function renderSessions(sessions: MonitorSession[]): void {
     groupIndex++;
   }
 
+  // Detach the editing session row before replacing innerHTML
+  let editingRow: Element | null = null;
+  if (editingSessionId) {
+    editingRow = container.querySelector(`.session[data-session-id="${editingSessionId}"]`);
+    if (editingRow) editingRow.remove();
+  }
+
   container.innerHTML = html;
+
+  // Re-insert the preserved editing row (with its live input + event listeners)
+  if (editingRow && editingSessionId) {
+    const placeholder = container.querySelector(`.session[data-session-id="${editingSessionId}"]`);
+    if (placeholder) {
+      placeholder.replaceWith(editingRow);
+    }
+  }
 }
 
 // Global functions for onclick handlers
