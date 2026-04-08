@@ -6,7 +6,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var popover: NSPopover!
     private var globalMonitor: Any?
     private var localMonitor: Any?
-    private var observationTask: Task<Void, Never>?
 
     let settings = AppSettings()
     lazy var store = SessionStore(settings: settings)
@@ -35,19 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let contentView = ContentView(store: store, settings: settings)
         popover.contentViewController = NSHostingController(rootView: contentView)
 
-        // Observe worst status changes to update icon
-        observationTask = Task { @MainActor in
-            var lastStatus: SessionStatus = .idle
-            while !Task.isCancelled {
-                let current = store.worstStatus
-                if current != lastStatus {
-                    lastStatus = current
-                    updateStatusIcon(current)
-                    updateTooltip()
-                }
-                try? await Task.sleep(for: .milliseconds(500))
-            }
-        }
+        // Observe worst status changes to update icon reactively
+        observeStoreStatus()
 
         // Start polling
         store.startPolling()
@@ -55,8 +43,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         store.stopPolling()
-        observationTask?.cancel()
         removeEventMonitors()
+    }
+
+    // MARK: - Observation
+
+    private func observeStoreStatus() {
+        withObservationTracking {
+            let status = store.worstStatus
+            updateStatusIcon(status)
+            updateTooltip()
+        } onChange: {
+            Task { @MainActor [weak self] in
+                self?.observeStoreStatus()
+            }
+        }
     }
 
     // MARK: - Status Icon

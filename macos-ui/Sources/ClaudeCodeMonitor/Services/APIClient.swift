@@ -63,8 +63,14 @@ struct APIClient {
 
     private static func buildURL(_ base: String, path: String) throws -> URL {
         let trimmed = base.hasSuffix("/") ? String(base.dropLast()) : base
-        guard let url = URL(string: trimmed + path) else {
+        guard let baseURL = URL(string: trimmed) else {
             throw APIError.invalidURL
+        }
+        // Split path into segments and append each to properly escape
+        let segments = path.split(separator: "/", omittingEmptySubsequences: true)
+        var url = baseURL
+        for segment in segments {
+            url = url.appendingPathComponent(String(segment))
         }
         return url
     }

@@ -81,10 +81,19 @@ struct MonitorSession: Codable, Identifiable, Hashable {
         Self.formatTimeAgo(isoString: firstSeen)
     }
 
+    private static let isoFormatterWithFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        ISO8601DateFormatter()
+    }()
+
     static func formatTimeAgo(isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        guard let date = formatter.date(from: isoString) ?? ISO8601DateFormatter().date(from: isoString) else {
+        guard let date = isoFormatterWithFractional.date(from: isoString)
+                ?? isoFormatter.date(from: isoString) else {
             return "?"
         }
         let diff = Int(Date().timeIntervalSince(date))
