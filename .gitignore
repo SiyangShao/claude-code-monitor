@@ -8,8 +8,16 @@ server/dist/
 agent/dist/
 ui/dist/
 
-# TypeScript build info
+# TypeScript build info & compiled output in source dirs
 *.tsbuildinfo
+*.d.ts
+*.d.ts.map
+*.js.map
+# JS files in src/ dirs are compiled output (source is .ts)
+shared/src/**/*.js
+server/src/**/*.js
+agent/src/**/*.js
+ui/src/**/*.js
 
 # Electron packaging
 ui/release/

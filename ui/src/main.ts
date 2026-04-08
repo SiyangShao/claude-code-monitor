@@ -349,6 +349,20 @@ app.whenReady().then(() => {
     createSettingsWindow();
   });
 
+  ipcMain.handle("rename-session", async (_event, sessionId: string, customTitle: string | null) => {
+    try {
+      const resp = await fetch(`${config.serverUrl}/api/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ customTitle }),
+      });
+      if (resp.ok) updateSessions();
+      return resp.ok;
+    } catch {
+      return false;
+    }
+  });
+
   ipcMain.handle("get-sessions", async () => {
     return await fetchSessions();
   });

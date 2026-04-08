@@ -28,4 +28,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getSessions: () => {
     return ipcRenderer.invoke("get-sessions");
   },
+  renameSession: (sessionId: string, customTitle: string | null) => {
+    return ipcRenderer.invoke("rename-session", sessionId, customTitle);
+  },
 });

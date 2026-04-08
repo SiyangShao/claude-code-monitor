@@ -26,9 +26,16 @@ export class SessionDB {
         pid INTEGER,
         claude_version TEXT,
         hidden INTEGER NOT NULL DEFAULT 0,
-        hidden_at TEXT
+        hidden_at TEXT,
+        custom_title TEXT
       )
     `);
+
+    // Migration: add custom_title column if missing
+    const cols = this.db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[];
+    if (!cols.some((c) => c.name === "custom_title")) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN custom_title TEXT");
+    }
   }
 
   upsertSession(session: {
@@ -148,6 +155,13 @@ export class SessionDB {
     return result.changes > 0;
   }
 
+  setCustomTitle(sessionId: string, customTitle: string | null): boolean {
+    const result = this.db
+      .prepare("UPDATE sessions SET custom_title = ? WHERE session_id = ?")
+      .run(customTitle, sessionId);
+    return result.changes > 0;
+  }
+
   close(): void {
     this.db.close();
   }
@@ -168,6 +182,7 @@ interface DbRow {
   claude_version: string | null;
   hidden: number;
   hidden_at: string | null;
+  custom_title: string | null;
 }
 
 function rowToSession(row: DbRow): MonitorSession {
@@ -184,6 +199,7 @@ function rowToSession(row: DbRow): MonitorSession {
     firstSeen: row.first_seen,
     pid: row.pid,
     claudeVersion: row.claude_version,
+    customTitle: row.custom_title,
     hidden: row.hidden === 1,
     hiddenAt: row.hidden_at,
   };

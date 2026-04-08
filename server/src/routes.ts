@@ -66,6 +66,22 @@ export function registerRoutes(
     return { ok: true };
   });
 
+  // PATCH /api/sessions/:id — rename a session
+  app.patch<{
+    Params: { id: string };
+    Body: { customTitle: string | null };
+  }>("/api/sessions/:id", async (request, reply) => {
+    if (!checkAuth(request.headers.authorization)) {
+      return reply.status(401).send({ error: "Unauthorized" });
+    }
+    const { customTitle } = request.body;
+    const ok = db.setCustomTitle(request.params.id, customTitle || null);
+    if (!ok) {
+      return reply.status(404).send({ error: "Session not found" });
+    }
+    return { ok: true };
+  });
+
   // POST /api/sessions/:id/restore — restore a hidden session
   app.post<{
     Params: { id: string };

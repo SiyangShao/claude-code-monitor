@@ -4,6 +4,7 @@ interface MonitorSession {
   cwd: string;
   title: string | null;
   slug: string | null;
+  customTitle: string | null;
   lastActivity: string;
   machine: string;
   environment: string;
@@ -21,6 +22,7 @@ interface ElectronAPI {
   saveConfig: (config: { serverUrl: string; apiKey: string }) => Promise<boolean>;
   openSettings: () => void;
   getSessions: () => Promise<MonitorSession[]>;
+  renameSession: (sessionId: string, customTitle: string | null) => Promise<boolean>;
 }
 
 const api = (window as any).electronAPI as ElectronAPI;
@@ -124,7 +126,7 @@ function renderSessions(sessions: MonitorSession[]): void {
     html += `<div class="machine-header">${escapeHtml(machine)} <span style="text-transform: none; font-weight: 400;">(${envLabel})</span></div>`;
 
     for (const s of machineSessions) {
-      const displayName = s.title || s.slug || shortPath(s.cwd) || s.sessionId.substring(0, 8);
+      const displayName = s.customTitle || s.title || s.slug || shortPath(s.cwd) || s.sessionId.substring(0, 8);
       const projectPath = shortPath(s.cwd);
       const timeAgo = formatTimeAgo(s.lastActivity);
       const emoji = STATUS_EMOJI[s.status] || "";
@@ -133,7 +135,7 @@ function renderSessions(sessions: MonitorSession[]): void {
         <div class="session" title="${escapeHtml(s.cwd)}" data-session-id="${escapeHtml(s.sessionId)}">
           <div class="status-indicator">${emoji}</div>
           <div class="session-info">
-            <div class="session-name">${escapeHtml(displayName)}</div>
+            <div class="session-name" ondblclick="event.stopPropagation(); renameSession('${escapeHtml(s.sessionId)}', this)">${escapeHtml(displayName)}</div>
             <div class="session-meta">${escapeHtml(projectPath)}</div>
           </div>
           <div class="session-time">${timeAgo}</div>
@@ -162,6 +164,32 @@ function renderSessions(sessions: MonitorSession[]): void {
 
 (window as any).openSettings = () => {
   api.openSettings();
+};
+
+(window as any).renameSession = (sessionId: string, el: HTMLElement) => {
+  const current = el.textContent || "";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = current;
+  input.className = "rename-input";
+  el.textContent = "";
+  el.appendChild(input);
+  input.focus();
+  input.select();
+
+  const commit = async () => {
+    const newTitle = input.value.trim() || null;
+    input.removeEventListener("blur", commit);
+    await api.renameSession(sessionId, newTitle);
+  };
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Enter") input.blur();
+    if (e.key === "Escape") {
+      input.removeEventListener("blur", commit);
+      el.textContent = current;
+    }
+  });
 };
 
 // Listen for updates from main process

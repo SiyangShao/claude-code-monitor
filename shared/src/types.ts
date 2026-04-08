@@ -28,6 +28,7 @@ export interface AgentReport {
 export interface MonitorSession extends SessionReport {
   machine: string;
   environment: EnvironmentType;
+  customTitle: string | null;
   hidden: boolean;
   hiddenAt: string | null;
   firstSeen: string; // ISO 8601

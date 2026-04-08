@@ -213,6 +213,27 @@ body {
   line-height: 1.3;
 }
 
+.session-name {
+  cursor: default;
+}
+
+.rename-input {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 4px;
+  border-radius: 3px;
+  width: 100%;
+  outline: none;
+  font-family: inherit;
+}
+
+.rename-input:focus {
+  border-color: #0a84ff;
+}
+
 .session-meta {
   font-size: 10px;
   color: var(--text-tertiary);
