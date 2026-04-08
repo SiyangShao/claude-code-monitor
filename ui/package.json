@@ -11,13 +11,15 @@
     "package:mac": "npm run build && electron-builder --mac --config electron-builder.yml",
     "package:linux": "npm run build && electron-builder --linux --config electron-builder.yml"
   },
+  "description": "System tray monitor for Claude Code sessions",
+  "author": "SiyangShao",
   "dependencies": {
-    "@claude-monitor/shared": "*",
-    "electron": "^33.0.0"
+    "@claude-monitor/shared": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
     "@types/node": "^22.0.0",
+    "electron": "^33.0.0",
     "electron-builder": "^25.1.0"
   }
 }
