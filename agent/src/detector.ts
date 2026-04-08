@@ -51,8 +51,9 @@ function readTail(filePath: string, tailBytes: number = 32768): JsonlEntry[] {
 }
 
 // Find the PID of the Claude Code process for a given session
-// Uses ~/.claude/tasks/<sessionId>/.lock which is held open by the process
-function findClaudePid(sessionId: string, claudeHome: string): number | null {
+// Linux: uses ~/.claude/tasks/<sessionId>/.lock held open by the process
+// macOS: matches claude process cwd against session cwd (no lock file on macOS)
+function findClaudePidLinux(sessionId: string, claudeHome: string): number | null {
   const lockFile = path.join(claudeHome, "tasks", sessionId, ".lock");
 
   try {
@@ -62,11 +63,9 @@ function findClaudePid(sessionId: string, claudeHome: string): number | null {
   }
 
   try {
-    // Linux: check /proc for any process with the lock file open
     const procDirs = fs.readdirSync("/proc").filter((d) => /^\d+$/.test(d));
     for (const pidStr of procDirs) {
       try {
-        // Check fd symlinks for the lock file
         const fdDir = `/proc/${pidStr}/fd`;
         const fds = fs.readdirSync(fdDir);
         for (const fd of fds) {
@@ -84,22 +83,43 @@ function findClaudePid(sessionId: string, claudeHome: string): number | null {
       }
     }
   } catch {
-    // /proc not available (macOS) — try lsof
+    // /proc not available
+  }
+
+  return null;
+}
+
+// macOS: cache of claude process cwds, refreshed periodically
+let claudeProcessCache: { pid: number; cwd: string }[] = [];
+let cacheTimestamp = 0;
+const CACHE_TTL_MS = 3000;
+
+function findClaudePidMac(sessionCwd: string): number | null {
+  if (!sessionCwd) return null;
+
+  const now = Date.now();
+  if (now - cacheTimestamp >= CACHE_TTL_MS) {
+    cacheTimestamp = now;
+    claudeProcessCache = [];
     try {
-      const output = execSync(
-        `lsof "${lockFile}" 2>/dev/null`,
-        { encoding: "utf-8", timeout: 5000 }
-      );
+      const output = execSync("lsof -a -c claude -d cwd 2>/dev/null", {
+        encoding: "utf-8",
+        timeout: 5000,
+      });
       for (const line of output.trim().split("\n").slice(1)) {
         const parts = line.trim().split(/\s+/);
         const pid = parseInt(parts[1], 10);
-        if (!isNaN(pid)) return pid;
+        const cwd = parts.slice(8).join(" ");
+        if (!isNaN(pid) && cwd) claudeProcessCache.push({ pid, cwd });
       }
     } catch {
-      // lsof may fail or file not opened
+      // lsof failed
     }
   }
 
+  for (const entry of claudeProcessCache) {
+    if (entry.cwd === sessionCwd) return entry.pid;
+  }
   return null;
 }
 
@@ -209,8 +229,11 @@ export function detectSession(
       if (entry.timestamp) lastActivity = entry.timestamp;
     }
 
-    // Find PID via lock file
-    const pid = findClaudePid(discovered.sessionId, home);
+    // Find PID: Linux uses lock file, macOS uses process cwd matching
+    const pid =
+      process.platform === "darwin"
+        ? findClaudePidMac(cwd)
+        : findClaudePidLinux(discovered.sessionId, home);
 
     // Detect status
     const status = detectStatus(entries, stat.mtime, pid);

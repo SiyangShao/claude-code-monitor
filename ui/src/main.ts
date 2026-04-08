@@ -121,6 +121,7 @@ function createMainWindow(): BrowserWindow {
     resizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
+    type: "panel",
     transparent: false,
     maximizable: false,
     minimizable: false,
