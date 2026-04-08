@@ -80,22 +80,37 @@ function renderProductivityBar(sessions: MonitorSession[]): void {
   bar.innerHTML = html;
 }
 
+// Editing state preserved across renders
+let editingState: { sessionId: string; value: string; selStart: number; selEnd: number } | null = null;
+
 function renderSessions(sessions: MonitorSession[]): void {
   const container = document.getElementById("sessions")!;
   const emptyState = document.getElementById("empty-state")!;
   const summary = document.getElementById("status-summary")!;
 
-  // Track which session is being renamed so we can skip it
+  // Save editing state before destroying DOM
   const renameInput = container.querySelector(".rename-input") as HTMLInputElement | null;
-  const editingSessionId = renameInput
-    ? renameInput.closest(".session")?.getAttribute("data-session-id")
-    : null;
+  if (renameInput) {
+    const sid = renameInput.closest(".session")?.getAttribute("data-session-id");
+    if (sid) {
+      editingState = {
+        sessionId: sid,
+        value: renameInput.value,
+        selStart: renameInput.selectionStart || 0,
+        selEnd: renameInput.selectionEnd || 0,
+      };
+    }
+  }
+
+  // Suppress blur-commit during innerHTML replacement
+  isRefreshing = true;
 
   if (sessions.length === 0) {
     container.innerHTML = "";
     emptyState.style.display = "block";
     summary.textContent = "connecting...";
     renderProductivityBar([]);
+    isRefreshing = false;
     return;
   }
 
@@ -134,15 +149,6 @@ function renderSessions(sessions: MonitorSession[]): void {
     html += `<div class="machine-header">${escapeHtml(machine)} <span style="text-transform: none; font-weight: 400;">(${envLabel})</span></div>`;
 
     for (const s of machineSessions) {
-      // Skip re-rendering the session being edited
-      if (s.sessionId === editingSessionId) {
-        const existing = container.querySelector(`.session[data-session-id="${s.sessionId}"]`);
-        if (existing) {
-          html += existing.outerHTML;
-          continue;
-        }
-      }
-
       const displayName = s.customTitle || s.title || s.slug || shortPath(s.cwd) || s.sessionId.substring(0, 8);
       const projectPath = shortPath(s.cwd);
       const lastChange = formatTimeAgo(s.lastActivity);
@@ -168,25 +174,22 @@ function renderSessions(sessions: MonitorSession[]): void {
     groupIndex++;
   }
 
-  // Detach the editing session row before replacing innerHTML.
-  // Set isRefreshing so the blur handler doesn't fire commit.
-  let editingRow: Element | null = null;
-  if (editingSessionId) {
-    editingRow = container.querySelector(`.session[data-session-id="${editingSessionId}"]`);
-    if (editingRow) {
-      isRefreshing = true;
-      editingRow.remove();
-      isRefreshing = false;
-    }
-  }
-
   container.innerHTML = html;
+  isRefreshing = false;
 
-  // Re-insert the preserved editing row (with its live input + event listeners)
-  if (editingRow && editingSessionId) {
-    const placeholder = container.querySelector(`.session[data-session-id="${editingSessionId}"]`);
-    if (placeholder) {
-      placeholder.replaceWith(editingRow);
+  // Restore editing input if user was mid-rename
+  if (editingState) {
+    const nameEl = container.querySelector(
+      `.session[data-session-id="${editingState.sessionId}"] .session-name`
+    ) as HTMLElement | null;
+    if (nameEl) {
+      // Re-create the rename input with saved state
+      (window as any).renameSession(editingState.sessionId, nameEl);
+      const newInput = nameEl.querySelector(".rename-input") as HTMLInputElement | null;
+      if (newInput) {
+        newInput.value = editingState.value;
+        newInput.setSelectionRange(editingState.selStart, editingState.selEnd);
+      }
     }
   }
 }
@@ -219,6 +222,7 @@ function renderSessions(sessions: MonitorSession[]): void {
   const commit = async () => {
     if (committed || isRefreshing) return;
     committed = true;
+    editingState = null;
     const newTitle = input.value.trim() || null;
     el.textContent = newTitle || current;
     await api.renameSession(sessionId, newTitle);
@@ -228,6 +232,7 @@ function renderSessions(sessions: MonitorSession[]): void {
     if (e.key === "Enter") input.blur();
     if (e.key === "Escape") {
       committed = true;
+      editingState = null;
       el.textContent = current;
     }
   });
