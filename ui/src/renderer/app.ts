@@ -23,7 +23,7 @@ interface ElectronAPI {
   getSessions: () => Promise<MonitorSession[]>;
 }
 
-const electronAPI = (window as any).electronAPI as ElectronAPI;
+const api = (window as any).electronAPI as ElectronAPI;
 
 const STATUS_EMOJI: Record<string, string> = {
   active: "\u26a1",
@@ -153,25 +153,25 @@ function renderSessions(sessions: MonitorSession[]): void {
 
 // Global functions for onclick handlers
 (window as any).copyId = (sessionId: string) => {
-  electronAPI.copyToClipboard(sessionId);
+  api.copyToClipboard(sessionId);
 };
 
 (window as any).hideSession = async (sessionId: string) => {
-  await electronAPI.hideSession(sessionId);
+  await api.hideSession(sessionId);
 };
 
 (window as any).openSettings = () => {
-  electronAPI.openSettings();
+  api.openSettings();
 };
 
 // Listen for updates from main process
-electronAPI.onSessionsUpdate((sessions) => {
+api.onSessionsUpdate((sessions) => {
   console.log("[renderer] received sessions-update:", sessions.length);
   renderSessions(sessions);
 });
 
 // Also pull sessions on load (in case we missed the push)
-electronAPI.getSessions().then((sessions) => {
+api.getSessions().then((sessions) => {
   console.log("[renderer] initial pull:", sessions.length);
   renderSessions(sessions);
 });
