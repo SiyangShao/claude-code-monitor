@@ -130,6 +130,15 @@ function createMainWindow(): BrowserWindow {
   });
 
   win.loadFile(path.join(__dirname, "renderer", "index.html"));
+
+  // Forward renderer console to terminal for debugging
+  win.webContents.on("console-message", (_e, _level, msg) => {
+    console.log(`[renderer] ${msg}`);
+  });
+  win.webContents.on("did-fail-load", (_e, code, desc) => {
+    console.error(`[renderer] failed to load: ${code} ${desc}`);
+  });
+
   // On macOS, frameless alwaysOnTop windows can lose focus before click events
   // reach buttons. Use a longer delay and check if a child window (settings) was opened.
   win.on("blur", () => {
