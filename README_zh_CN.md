@@ -78,8 +78,8 @@ cat > ~/.claude-monitor/agent-config.json << 'EOF'
   "apiKey": "your-secret-key",
   "machineName": "my-machine",
   "environment": "local",
-  "pollIntervalSeconds": 5,
-  "heartbeatIntervalSeconds": 30
+  "pollIntervalSeconds": 30,
+  "heartbeatIntervalSeconds": 60
 }
 EOF
 
@@ -180,8 +180,8 @@ npm run build && npx electron-builder --linux --config electron-builder.yml
 | `apiKey` | 需与 server 配置一致 |
 | `machineName` | 本机显示名称 |
 | `environment` | `local` / `ssh` / `docker` |
-| `pollIntervalSeconds` | 扫描会话间隔（默认：5 秒） |
-| `heartbeatIntervalSeconds` | 无变化时强制上报间隔（默认：30 秒） |
+| `pollIntervalSeconds` | 扫描会话间隔（默认：30 秒） |
+| `heartbeatIntervalSeconds` | 无变化时强制上报间隔（默认：60 秒） |
 
 ## API
 
@@ -218,7 +218,7 @@ Claude Code 的 [hook 系统](https://code.claude.com/docs/en/hooks) 直接推�
 
 ### Agent 轮询（兜底/校准）
 
-Agent 每 5 秒轮询一次，作为没有 hooks 的机器的兜底方案：
+Agent 每 30 秒轮询一次，作为没有 hooks 的机器的兜底方案：
 
 1. 扫描 `~/.claude/projects/*/<session-uuid>.jsonl` 查找会话文件
 2. 检测 PID 存活：

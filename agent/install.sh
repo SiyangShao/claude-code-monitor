@@ -30,8 +30,8 @@ if [[ ! -f "$CONFIG_PATH" ]]; then
   "apiKey": "",
   "machineName": "CHANGE_ME",
   "environment": "local",
-  "pollIntervalSeconds": 5,
-  "heartbeatIntervalSeconds": 30
+  "pollIntervalSeconds": 30,
+  "heartbeatIntervalSeconds": 60
 }
 TMPL
     echo "Please edit $CONFIG_PATH with your settings, then re-run this script."

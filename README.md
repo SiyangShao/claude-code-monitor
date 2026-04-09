@@ -78,8 +78,8 @@ cat > ~/.claude-monitor/agent-config.json << 'EOF'
   "apiKey": "your-secret-key",
   "machineName": "my-machine",
   "environment": "local",
-  "pollIntervalSeconds": 5,
-  "heartbeatIntervalSeconds": 30
+  "pollIntervalSeconds": 30,
+  "heartbeatIntervalSeconds": 60
 }
 EOF
 
@@ -180,8 +180,8 @@ Output goes to `ui/release/`.
 | `apiKey` | Must match server config |
 | `machineName` | Display name for this machine |
 | `environment` | `local` / `ssh` / `docker` |
-| `pollIntervalSeconds` | How often to scan sessions (default: 5) |
-| `heartbeatIntervalSeconds` | Force report even if no change (default: 30) |
+| `pollIntervalSeconds` | How often to scan sessions (default: 30) |
+| `heartbeatIntervalSeconds` | Force report even if no change (default: 60) |
 
 ## API
 
@@ -218,7 +218,7 @@ Claude Code's [hook system](https://code.claude.com/docs/en/hooks) pushes HTTP e
 
 ### Agent polling (fallback/calibration)
 
-The agent polls every 5s as a fallback for machines without hooks:
+The agent polls every 30s as a fallback for machines without hooks:
 
 1. Scans `~/.claude/projects/*/<session-uuid>.jsonl` for session files
 2. Checks PID liveness:
