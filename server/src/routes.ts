@@ -1,5 +1,16 @@
 import type { FastifyInstance } from "fastify";
-import type { AgentReport } from "@claude-monitor/shared";
+import type {
+  AgentReport,
+  HookEvent,
+  HookNotificationEvent,
+  HookStopEvent,
+  HookSessionStartEvent,
+  HookSessionEndEvent,
+  HookToolUseEvent,
+  HookSubagentEvent,
+  HookCompactEvent,
+  SessionStatus,
+} from "@claude-monitor/shared";
 import type { SessionDB } from "./db.js";
 
 export function registerRoutes(
@@ -95,4 +106,165 @@ export function registerRoutes(
     }
     return { ok: true };
   });
+
+  // ── Hook endpoints ──
+  // Claude Code hooks POST JSON directly to these endpoints.
+  // Each resolves a SessionStatus and calls db.updateFromHook().
+
+  function hookAuth(authorization: string | undefined): boolean {
+    return checkAuth(authorization);
+  }
+
+  // POST /api/hook/notification — permission_prompt → waiting, idle_prompt → idle
+  app.post<{ Body: HookNotificationEvent }>(
+    "/api/hook/notification",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      let status: SessionStatus;
+      switch (body.notification_type) {
+        case "permission_prompt":
+          status = "waiting";
+          break;
+        case "idle_prompt":
+          status = "idle";
+          break;
+        default:
+          // auth_success, elicitation_dialog — treat as active
+          status = "active";
+      }
+
+      db.updateFromHook(body.session_id, status, body.cwd || "");
+      app.log.info(
+        `[hook] notification: session=${body.session_id} type=${body.notification_type} → ${status}`
+      );
+      return { ok: true };
+    }
+  );
+
+  // POST /api/hook/stop — turn ended → idle
+  app.post<{ Body: HookStopEvent }>(
+    "/api/hook/stop",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      db.updateFromHook(body.session_id, "idle", body.cwd || "");
+      app.log.info(`[hook] stop: session=${body.session_id} → idle`);
+      return { ok: true };
+    }
+  );
+
+  // POST /api/hook/session-start — session started → active
+  app.post<{ Body: HookSessionStartEvent }>(
+    "/api/hook/session-start",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      db.updateFromHook(body.session_id, "active", body.cwd || "");
+      app.log.info(
+        `[hook] session-start: session=${body.session_id} source=${body.source || "unknown"} → active`
+      );
+      return { ok: true };
+    }
+  );
+
+  // POST /api/hook/session-end — session closed → idle
+  app.post<{ Body: HookSessionEndEvent }>(
+    "/api/hook/session-end",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      db.updateFromHook(body.session_id, "idle", body.cwd || "");
+      app.log.info(
+        `[hook] session-end: session=${body.session_id} reason=${body.reason || "unknown"} → idle`
+      );
+      return { ok: true };
+    }
+  );
+
+  // POST /api/hook/tool-use — tool invoked → active
+  app.post<{ Body: HookToolUseEvent }>(
+    "/api/hook/tool-use",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      db.updateFromHook(body.session_id, "active", body.cwd || "");
+      // Don't log every tool use — too noisy
+      return { ok: true };
+    }
+  );
+
+  // POST /api/hook/subagent — subagent lifecycle
+  app.post<{ Body: HookSubagentEvent }>(
+    "/api/hook/subagent",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      // SubagentStart → parent is active (working via subagent)
+      // SubagentStop → parent still active (subagent returned result)
+      db.updateFromHook(body.session_id, "active", body.cwd || "");
+      app.log.info(
+        `[hook] ${body.hook_event_name}: session=${body.session_id} type=${body.agent_type || "unknown"} → active`
+      );
+      return { ok: true };
+    }
+  );
+
+  // POST /api/hook/compact — compaction lifecycle
+  app.post<{ Body: HookCompactEvent }>(
+    "/api/hook/compact",
+    async (request, reply) => {
+      if (!hookAuth(request.headers.authorization)) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const body = request.body;
+      if (!body?.session_id) {
+        return reply.status(400).send({ error: "Missing session_id" });
+      }
+
+      const status: SessionStatus =
+        body.hook_event_name === "PreCompact" ? "compacting" : "active";
+      db.updateFromHook(body.session_id, status, body.cwd || "");
+      app.log.info(
+        `[hook] ${body.hook_event_name}: session=${body.session_id} → ${status}`
+      );
+      return { ok: true };
+    }
+  );
 }

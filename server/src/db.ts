@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import type { MonitorSession, SessionStatus, EnvironmentType } from "@claude-monitor/shared";
+import type { MonitorSession, SessionStatus, EnvironmentType, HookEvent } from "@claude-monitor/shared";
 
 export class SessionDB {
   private db: Database.Database;
@@ -36,7 +36,14 @@ export class SessionDB {
     if (!cols.some((c) => c.name === "custom_title")) {
       this.db.exec("ALTER TABLE sessions ADD COLUMN custom_title TEXT");
     }
+    // Migration: add hook_updated_at column for hook vs agent-report merge
+    if (!cols.some((c) => c.name === "hook_updated_at")) {
+      this.db.exec("ALTER TABLE sessions ADD COLUMN hook_updated_at TEXT");
+    }
   }
+
+  /** How long (ms) a hook update takes precedence over agent report status. */
+  private static readonly HOOK_PRIORITY_MS = 30_000;
 
   upsertSession(session: {
     sessionId: string;
@@ -52,21 +59,26 @@ export class SessionDB {
   }): void {
     const now = new Date().toISOString();
 
-    // Check if session was hidden and is now non-idle → auto-restore
-    const existing = this.db
-      .prepare("SELECT hidden, status FROM sessions WHERE session_id = ?")
-      .get(session.sessionId) as { hidden: number; status: string } | undefined;
+    // Merge logic: if hook recently updated this session, prefer hook's status
+    // unless agent reports PID=null (process dead → force idle)
+    let effectiveStatus = session.status;
+    const hookTs = this.getHookUpdatedAt(session.sessionId);
+    if (hookTs) {
+      const hookAge = Date.now() - new Date(hookTs).getTime();
+      if (hookAge < SessionDB.HOOK_PRIORITY_MS && session.pid !== null) {
+        // Hook updated recently and process is alive — keep hook's status
+        const existing = this.db
+          .prepare("SELECT status FROM sessions WHERE session_id = ?")
+          .get(session.sessionId) as { status: string } | undefined;
+        if (existing) {
+          effectiveStatus = existing.status as SessionStatus;
+        }
+      }
+    }
 
-    let hidden = 0;
-    let hiddenAt: string | null = null;
-
-    if (existing?.hidden && session.status !== "idle") {
-      // Auto-restore: was hidden but now non-idle
-      hidden = 0;
-      hiddenAt = null;
-    } else if (existing) {
-      hidden = existing.hidden;
-      hiddenAt = null; // preserved by the ON CONFLICT below
+    // If agent says PID is null, force idle regardless of hooks
+    if (session.pid === null && effectiveStatus !== "idle") {
+      effectiveStatus = "idle";
     }
 
     this.db
@@ -75,7 +87,7 @@ export class SessionDB {
           session_id, machine, environment, status, cwd, title, slug,
           last_activity, last_reported, first_seen, pid, claude_version,
           hidden, hidden_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)
         ON CONFLICT(session_id) DO UPDATE SET
           machine = excluded.machine,
           environment = excluded.environment,
@@ -101,7 +113,7 @@ export class SessionDB {
         session.sessionId,
         session.machine,
         session.environment,
-        session.status,
+        effectiveStatus,
         session.cwd,
         session.title,
         session.slug,
@@ -109,9 +121,7 @@ export class SessionDB {
         now,
         now,
         session.pid,
-        session.claudeVersion,
-        hidden,
-        hiddenAt
+        session.claudeVersion
       );
   }
 
@@ -162,6 +172,64 @@ export class SessionDB {
     return result.changes > 0;
   }
 
+  /** Update session status from a hook event (real-time, high priority). */
+  updateFromHook(
+    sessionId: string,
+    status: SessionStatus,
+    cwd: string,
+    machineName?: string
+  ): void {
+    const now = new Date().toISOString();
+    const existing = this.db
+      .prepare("SELECT session_id FROM sessions WHERE session_id = ?")
+      .get(sessionId) as { session_id: string } | undefined;
+
+    if (existing) {
+      // Update existing session — hook always wins for status
+      this.db
+        .prepare(
+          `UPDATE sessions SET
+            status = ?,
+            cwd = CASE WHEN ? != '' THEN ? ELSE cwd END,
+            last_activity = ?,
+            last_reported = ?,
+            hook_updated_at = ?,
+            hidden = CASE WHEN hidden = 1 AND ? != 'idle' THEN 0 ELSE hidden END,
+            hidden_at = CASE WHEN hidden = 1 AND ? != 'idle' THEN NULL ELSE hidden_at END
+          WHERE session_id = ?`
+        )
+        .run(status, cwd, cwd, now, now, now, status, status, sessionId);
+    } else {
+      // Insert new session from hook — we know session_id and cwd, rest filled later by agent report
+      this.db
+        .prepare(
+          `INSERT INTO sessions (
+            session_id, machine, environment, status, cwd, title, slug,
+            last_activity, last_reported, first_seen, pid, claude_version,
+            hidden, hidden_at, hook_updated_at
+          ) VALUES (?, ?, 'local', ?, ?, NULL, NULL, ?, ?, ?, NULL, NULL, 0, NULL, ?)`
+        )
+        .run(
+          sessionId,
+          machineName || "unknown",
+          status,
+          cwd,
+          now,
+          now,
+          now,
+          now
+        );
+    }
+  }
+
+  /** Get hook_updated_at for a session (used for merge logic). */
+  getHookUpdatedAt(sessionId: string): string | null {
+    const row = this.db
+      .prepare("SELECT hook_updated_at FROM sessions WHERE session_id = ?")
+      .get(sessionId) as { hook_updated_at: string | null } | undefined;
+    return row?.hook_updated_at ?? null;
+  }
+
   close(): void {
     this.db.close();
   }
@@ -183,6 +251,7 @@ interface DbRow {
   hidden: number;
   hidden_at: string | null;
   custom_title: string | null;
+  hook_updated_at: string | null;
 }
 
 function rowToSession(row: DbRow): MonitorSession {

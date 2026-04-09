@@ -9,18 +9,18 @@
 ## 架构
 
 ```
-[机器 A: agent] ──POST──> [Server] <──GET── [UI (Electron 或 macOS 原生)]
-[机器 B: agent] ──POST──>    │
-[Docker: agent] ──POST──>    │
-                              └──SSH 轮询──> [机器 C: 无 agent]
+[Claude Code] ──HTTP hook──> [Server] <──GET── [UI (Electron 或 macOS 原生)]
+[Agent]       ──POST──>         │
+                                └──SSH 轮询──> [机器 C: 无 agent]
 ```
 
 所有机器需在同一个 [Tailscale](https://tailscale.com/) 网络中。
 
 | 组件 | 职责 |
 |------|------|
-| **Server** | 中央状态聚合器。接收 agent 推送，可选通过 SSH 轮询无 agent 的机器，提供 REST API。 |
-| **Agent** | 运行在每台被监控的机器上。通过 JSONL 日志 + PID 存活检测来判断会话状态，推送到 server。 |
+| **Server** | 中央状态聚合器。接收 hook 事件 + agent 推送，可选通过 SSH 轮询无 agent 的机器，提供 REST API。 |
+| **Hooks** | Claude Code 原生 hook 系统，实时推送状态事件（waiting、active、idle、compacting）到 server。 |
+| **Agent** | 运行在每台被监控的机器上。轮询 JSONL 日志 + PID 存活检测作为兜底/校准。推送全量快照到 server。 |
 | **UI (Electron)** | 跨平台 Electron 托盘/菜单栏应用。按机器分组显示会话，支持明亮/暗黑模式自动切换。 |
 | **UI (macOS 原生)** | 原生 Swift/SwiftUI 菜单栏应用。macOS 上更轻量的替代方案。 |
 
@@ -87,7 +87,20 @@ EOF
 bash agent/install.sh
 ```
 
-安装脚本会自动配置 systemd 服务（Linux）或 launchd 代理（macOS），开机自启。
+安装脚本会自动配置 systemd 服务（Linux）或 launchd 代理（macOS），开机自启，并配置 Claude Code hooks。
+
+#### 手动设置 hooks（可选，如果未使用 install.sh）
+
+```bash
+# 从 ~/.claude-monitor/agent-config.json 读取 serverUrl 和 apiKey，
+# 将 hooks 写入 ~/.claude/settings.json，将 CLAUDE_MONITOR_API_KEY 写入 shell profile
+node agent/dist/setup-hooks.js
+
+# 移除 hooks
+node agent/dist/setup-hooks.js --remove
+```
+
+安装 hooks 后需要重启 Claude Code 会话才能生效。
 
 ### 3. 启动 UI
 
@@ -174,7 +187,8 @@ npm run build && npx electron-builder --linux --config electron-builder.yml
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
-| `POST` | `/api/report` | Agent 推送会话状态 |
+| `POST` | `/api/report` | Agent 推送会话状态（全量快照） |
+| `POST` | `/api/hook/*` | Claude Code hooks 实时推送事件 |
 | `GET` | `/api/sessions` | 获取所有可见会话 |
 | `GET` | `/api/sessions?includeHidden=true` | 包含已隐藏的会话 |
 | `PATCH` | `/api/sessions/:id` | 设置自定义标题（`{"customTitle": "..."}`） |
@@ -185,17 +199,36 @@ npm run build && npx electron-builder --linux --config electron-builder.yml
 
 ## 状态检测原理
 
-Agent 通过以下方式检测会话状态：
+通过两个互补的通道检测状态：
+
+### Hooks（实时，主要）
+
+Claude Code 的 [hook 系统](https://code.claude.com/docs/en/hooks) 直接推送 HTTP 事件到 server：
+
+| Hook 事件 | 状态 |
+|-----------|------|
+| `Notification` (`permission_prompt`) | **waiting** |
+| `Notification` (`idle_prompt`) | **idle** |
+| `PreToolUse` / `PostToolUse` | **active** |
+| `SubagentStart` / `SubagentStop` | **active** |
+| `PreCompact` | **compacting** |
+| `PostCompact` / `Stop` | **idle** |
+| `SessionStart` | **active** |
+| `SessionEnd` | **idle** |
+
+### Agent 轮询（兜底/校准）
+
+Agent 每 5 秒轮询一次，作为没有 hooks 的机器的兜底方案：
 
 1. 扫描 `~/.claude/projects/*/<session-uuid>.jsonl` 查找会话文件
 2. 检测 PID 存活：
    - **Linux**：通过 `~/.claude/tasks/<sessionId>/.lock` 文件检测（Claude 进程持有该文件句柄）
    - **macOS**：使用 `lsof -a -c claude -d cwd` 匹配 Claude 进程工作目录
-3. 读取 JSONL 文件末尾判断状态：
-   - **active**：文件近期有写入 + PID 存活
-   - **waiting**：最后一条 assistant 消息包含 `tool_use` 但没有后续 user 响应
-   - **compacting**：最后一条记录为 `system:compact_boundary`
-   - **idle**：PID 已死或文件长时间未更新
+3. 读取 JSONL 文件末尾判断状态
+
+### 状态合并
+
+当两个通道同时上报时，hooks 在 30 秒内优先。如果 agent 报告 PID=null（进程已死），则覆盖 hooks 状态，强制设为 idle。
 
 ## 技术栈
 

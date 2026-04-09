@@ -9,9 +9,8 @@ A lightweight monitoring tool for [Claude Code](https://docs.anthropic.com/en/do
 ## Architecture
 
 ```
-[Machine A: agent] ──POST──> [Server] <──GET── [UI (Electron or macOS native)]
-[Machine B: agent] ──POST──>    │
-[Docker:    agent] ──POST──>    │
+[Claude Code] ──HTTP hook──> [Server] <──GET── [UI (Electron or macOS native)]
+[Agent]       ──POST──>         │
                                 └──SSH poll──> [Machine C: no agent]
 ```
 
@@ -19,8 +18,9 @@ All machines are assumed to be on the same [Tailscale](https://tailscale.com/) n
 
 | Component | Role |
 |-----------|------|
-| **Server** | Central state aggregator. Receives agent pushes, optionally polls via SSH, serves REST API. |
-| **Agent** | Runs on each monitored machine. Detects session state from JSONL transcripts + PID liveness. Pushes to server. |
+| **Server** | Central state aggregator. Receives hook events + agent pushes, optionally polls via SSH, serves REST API. |
+| **Hooks** | Claude Code's native hook system pushes real-time status events (waiting, active, idle, compacting) directly to the server via HTTP. |
+| **Agent** | Runs on each monitored machine. Polls JSONL transcripts + PID liveness as fallback/calibration. Pushes full snapshots to server. |
 | **UI (Electron)** | Cross-platform Electron tray/menubar app. Displays sessions grouped by machine. Supports light/dark mode. |
 | **UI (macOS native)** | Native Swift/SwiftUI menu bar app for macOS. Lightweight alternative to the Electron UI. |
 
@@ -87,7 +87,20 @@ EOF
 bash agent/install.sh
 ```
 
-The install script sets up a systemd service (Linux) or launchd agent (macOS) that starts automatically.
+The install script sets up a systemd service (Linux) or launchd agent (macOS) that starts automatically, and configures Claude Code hooks.
+
+#### Set up hooks manually (optional, if not using install.sh)
+
+```bash
+# Reads serverUrl and apiKey from ~/.claude-monitor/agent-config.json,
+# writes hooks to ~/.claude/settings.json and CLAUDE_MONITOR_API_KEY to shell profile
+node agent/dist/setup-hooks.js
+
+# To remove hooks
+node agent/dist/setup-hooks.js --remove
+```
+
+Restart Claude Code sessions after installing hooks for them to take effect.
 
 ### 3. Launch the UI
 
@@ -174,7 +187,8 @@ Output goes to `ui/release/`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/report` | Agent pushes session state |
+| `POST` | `/api/report` | Agent pushes session state (full snapshot) |
+| `POST` | `/api/hook/*` | Claude Code hooks push real-time events |
 | `GET` | `/api/sessions` | Fetch all visible sessions |
 | `GET` | `/api/sessions?includeHidden=true` | Include hidden sessions |
 | `PATCH` | `/api/sessions/:id` | Set custom title (`{"customTitle": "..."}`) |
@@ -185,17 +199,36 @@ All mutation endpoints (`POST`, `PATCH`, `DELETE`) require `Authorization: Beare
 
 ## How Status Detection Works
 
-The agent detects session status by:
+Status is detected through two complementary channels:
 
-1. Scanning `~/.claude/projects/*/<session-uuid>.jsonl` for session files
-2. Checking PID liveness:
+### Hooks (real-time, primary)
+
+Claude Code's [hook system](https://code.claude.com/docs/en/hooks) pushes HTTP events directly to the server:
+
+| Hook Event | Status |
+|------------|--------|
+| `Notification` (`permission_prompt`) | **waiting** |
+| `Notification` (`idle_prompt`) | **idle** |
+| `PreToolUse` / `PostToolUse` | **active** |
+| `SubagentStart` / `SubagentStop` | **active** |
+| `PreCompact` | **compacting** |
+| `PostCompact` / `Stop` | **idle** |
+| `SessionStart` | **active** |
+| `SessionEnd` | **idle** |
+
+### Agent polling (fallback/calibration)
+
+The agent polls every 5s as a fallback for machines without hooks:
+
+1. Scans `~/.claude/projects/*/<session-uuid>.jsonl` for session files
+2. Checks PID liveness:
    - **Linux**: checks `~/.claude/tasks/<sessionId>/.lock` (held open by the Claude process)
    - **macOS**: uses `lsof -a -c claude -d cwd` to match Claude process working directory
-3. Reading the JSONL tail to determine state:
-   - **active**: File recently written + PID alive
-   - **waiting**: Last assistant message has `tool_use` with no follow-up user response
-   - **compacting**: Last entry is `system:compact_boundary`
-   - **idle**: PID dead or file stale
+3. Reads the JSONL tail to determine state
+
+### State merge
+
+When both channels report, hooks take priority for 30 seconds. If the agent reports PID=null (process dead), it overrides hooks and forces idle.
 
 ## Tech Stack
 

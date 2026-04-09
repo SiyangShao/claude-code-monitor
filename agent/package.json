@@ -4,12 +4,15 @@
   "private": true,
   "main": "./dist/index.js",
   "bin": {
-    "claude-monitor-agent": "./dist/index.js"
+    "claude-monitor-agent": "./dist/index.js",
+    "claude-monitor-setup-hooks": "./dist/setup-hooks.js"
   },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "setup-hooks": "tsx src/setup-hooks.ts",
+    "remove-hooks": "tsx src/setup-hooks.ts -- --remove"
   },
   "dependencies": {
     "@claude-monitor/shared": "*",

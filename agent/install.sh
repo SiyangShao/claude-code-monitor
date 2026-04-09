@@ -46,6 +46,7 @@ npx --workspace=shared tsc
 npx --workspace=agent tsc
 
 AGENT_BIN="${AGENT_DIR}/agent/dist/index.js"
+HOOKS_BIN="${AGENT_DIR}/agent/dist/setup-hooks.js"
 
 if [[ "$OS" == "linux" ]]; then
     echo "Installing systemd user service..."
@@ -109,6 +110,16 @@ EOF
     echo "Service installed and started."
     echo "  Logs: tail -f ~/.claude-monitor/agent.log"
     echo "  Stop: launchctl unload $PLIST_PATH"
+fi
+
+# Set up Claude Code hooks for real-time status
+echo ""
+echo "Setting up Claude Code hooks..."
+if node "$HOOKS_BIN" 2>/dev/null; then
+    echo "Hooks installed successfully."
+else
+    echo "Warning: Could not set up hooks. You can run manually later:"
+    echo "  node ${HOOKS_BIN}"
 fi
 
 echo ""
